@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Tetris Dashboard</title>
+        <link rel="stylesheet" href="styles.css" />
+        <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="score-header">SCORE</div>
+            <div class="score">
+                <div class="score-value">(5x3)</div>
+            </div>
+
+            <div class="reset-header">RESET</div>
+
+            <div class="controls">
+                <button class="control-btn">⏮</button>
+                <button class="control-btn">⏸</button>
+                <button class="control-btn">⏭</button>
+            </div>
+
+            <div class="pps">PPS: [XX]</div>
+
+            <div class="best-move">
+                <canvas id="bestMoveCanvas"></canvas>
+            </div>
+
+            <div class="board">
+                <canvas id="boardCanvas"></canvas>
+            </div>
+
+            <div class="hold-header">HOLD</div>
+            <div class="hold">
+                <canvas id="holdCanvas"></canvas>
+            </div>
+
+            <div class="queue-header">QUEUE</div>
+
+            <div class="queue-area">
+                <canvas id="queueCanvas"></canvas>
+            </div>
+
+            <div class="statistics-header">STATISTICS</div>
+            <div class="statistics">
+                <div class="statistics-size">(5x20)</div>
+            </div>
+        </div>
+        <script src="script.js"></script>
+    </body>
+</html>
