@@ -121,19 +121,17 @@ export function rotatePiece(direction) {
 
 function tryWallKicks(fromRotation, toRotation) {
     const pieceType = state.currentPiece;
-    // O-piece (2) does not rotate or kick
-    if (pieceType === 2) return false;
 
-    // Use 'I' kicks for I-piece (1), and 'OTJLSZ' for all others
     const kickTableKey = pieceType === 1 ? "I" : "OTJLSZ";
-    const kickKey = fromRotation * 3 + ((toRotation - fromRotation + 4) % 4);
-
+    const kickKey = fromRotation + "-" + toRotation;
     const kicks = KICK_TABLE[kickTableKey][kickKey];
+
     if (!kicks) return false;
 
     for (let kick of kicks) {
         const kickX = state.currentX + kick[0];
-        const kickY = state.currentY + kick[1];
+        const kickY = state.currentY - kick[1];
+
         if (isValidMove(pieceType, kickX, kickY, toRotation)) {
             setState("currentX", kickX);
             setState("currentY", kickY);
@@ -141,6 +139,7 @@ function tryWallKicks(fromRotation, toRotation) {
             return true;
         }
     }
+
     return false;
 }
 

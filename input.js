@@ -56,18 +56,14 @@ function getActionFromKey(key) {
 }
 
 function startDAS(direction) {
-    console.log("Starting DAS for direction:", direction);
     if (dasTimers[direction]) return; // Already started
 
     // Execute immediate movement
     if (direction === "left") {
-        console.log("Moving piece left");
         movePiece(-1, 0);
     } else if (direction === "right") {
-        console.log("Moving piece right");
         movePiece(1, 0);
     } else if (direction === "down") {
-        console.log("Soft dropping");
         softDrop();
     }
 
@@ -129,10 +125,11 @@ function stopARR(direction) {
 }
 
 function handleKeyDown(event) {
-    console.log("Key pressed:", event.code);
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+        return;
+    }
 
     const action = getActionFromKey(event.code);
-    console.log("Action mapped:", action);
 
     if (!action) return;
 
@@ -140,7 +137,6 @@ function handleKeyDown(event) {
 
     switch (action) {
         case "left":
-            console.log("Left action triggered");
             if (!movementState.left) {
                 // Stop right movement if active
                 if (movementState.right) {
@@ -151,7 +147,6 @@ function handleKeyDown(event) {
             break;
 
         case "right":
-            console.log("Right action triggered");
             if (!movementState.right) {
                 // Stop left movement if active
                 if (movementState.left) {
@@ -162,44 +157,41 @@ function handleKeyDown(event) {
             break;
 
         case "down":
-            console.log("Down action triggered");
             if (!movementState.down) {
                 startDAS("down");
             }
             break;
 
         case "rotateClockwise":
-            console.log("Rotate clockwise triggered");
             rotatePiece(1);
             break;
 
         case "rotateCounterClockwise":
-            console.log("Rotate counter-clockwise triggered");
             rotatePiece(-1);
             break;
 
         case "rotate180":
-            console.log("Rotate 180 triggered");
             rotatePiece(2);
             break;
 
         case "hardDrop":
-            console.log("Hard drop triggered");
             hardDrop();
             break;
 
         case "hold":
-            console.log("Hold triggered");
             holdCurrentPiece();
             break;
         case "reset":
-            console.log("Reset game triggered");
             resetGame();
             break;
     }
 }
 
 function handleKeyUp(event) {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+        return;
+    }
+
     const action = getActionFromKey(event.code);
     if (!action) return;
 
@@ -219,7 +211,6 @@ function handleKeyUp(event) {
 }
 
 export function setupInput() {
-    console.log("Setting up input listeners");
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
 

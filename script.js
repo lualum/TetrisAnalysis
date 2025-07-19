@@ -9,6 +9,7 @@ import { setupInput } from "./input.js";
 import { initWasm } from "./bot.js";
 import { spawnPiece, generateBag } from "./game.js";
 import { state, setState } from "./state.js";
+import { setupBotControls } from "./botControls.js";
 
 function startGame() {
     setState("gameRunning", true);
@@ -45,6 +46,7 @@ function init() {
     initWasm();
     initCanvases();
     setupInput();
+    setupBotControls();
     startGame();
 }
 
