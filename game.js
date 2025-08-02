@@ -1,6 +1,5 @@
 import { state, setState } from "./state.js";
 import { PIECES, KICK_TABLE } from "./constants.js";
-import { getBotMove } from "./bot.js";
 
 export function spawnPiece() {
     if (state.nextQueue.length === 0) {
@@ -27,7 +26,6 @@ export function spawnPiece() {
     }
 
     generateBag();
-    getBotMove();
 }
 
 export function generateBag() {

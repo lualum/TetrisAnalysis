@@ -1,4 +1,4 @@
-export function setupBotControls() {
+export function setupBotControls(botInterface = null) {
     // PPS Input
     const ppsInput = document.getElementById("ppsInput");
 
@@ -27,6 +27,64 @@ export function setupBotControls() {
         } else {
             playPauseBtn.textContent = "⏵";
             onPause();
+        }
+    });
+
+    const input = document.getElementById("ppsInput");
+    // const upBtn = document.querySelector(".arrow-up");
+    // const downBtn = document.querySelector(".arrow-down");
+    const rightBtn = document.querySelector(".arrow-right");
+
+    // upBtn.addEventListener("click", () => {
+    //     const currentValue = parseFloat(input.value) || 0;
+    //     const step = 0.1;
+    //     const max = 10;
+    //     const newValue = currentValue + step;
+
+    //     if (newValue <= max) {
+    //         input.value = newValue.toFixed(1);
+    //     }
+    // });
+
+    // downBtn.addEventListener("click", () => {
+    //     const currentValue = parseFloat(input.value) || 0;
+    //     const step = 0.1;
+    //     const min = 0;
+    //     const newValue = currentValue - step;
+
+    //     if (newValue >= min) {
+    //         input.value = newValue.toFixed(1);
+    //     }
+    // });
+
+    // Right Arrow Button - Get Bot Suggestion
+    if (rightBtn) {
+        rightBtn.addEventListener("click", () => {
+            if (botInterface && botInterface.isInitialized) {
+                try {
+                    botInterface.getSuggestion();
+                    console.log("Requested bot suggestion");
+                } catch (error) {
+                    console.error("Failed to get bot suggestion:", error);
+                }
+            } else {
+                console.warn("Bot interface not available or not initialized");
+            }
+        });
+    }
+
+    // Keyboard support for right arrow key
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight") {
+            event.preventDefault(); // Prevent default browser behavior
+            if (botInterface && botInterface.isInitialized) {
+                try {
+                    botInterface.getSuggestion();
+                    console.log("Requested bot suggestion via keyboard");
+                } catch (error) {
+                    console.error("Failed to get bot suggestion:", error);
+                }
+            }
         }
     });
 }

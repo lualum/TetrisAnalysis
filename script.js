@@ -6,10 +6,13 @@ import {
     drawBestMove,
 } from "./ui.js";
 import { setupInput } from "./input.js";
-import { initWasm } from "./bot.js";
 import { spawnPiece, generateBag } from "./game.js";
 import { state, setState } from "./state.js";
+import { ColdClearInterface } from "./bot.js";
 import { setupBotControls } from "./botControls.js";
+
+// Global bot interface instance
+let botInterface = null;
 
 function startGame() {
     setState("gameRunning", true);
@@ -42,12 +45,34 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-function init() {
-    initWasm();
+async function init() {
+    try {
+        // Initialize bot interface
+        botInterface = new ColdClearInterface();
+        console.log("Initializing bot...");
+
+        const botInitialized = await botInterface.initialize();
+        if (botInitialized) {
+            console.log("Bot initialized successfully");
+        } else {
+            console.warn("Bot initialization failed, continuing without bot");
+        }
+
+        // Make bot available globally for other modules
+        window.coldClearBot = botInterface;
+    } catch (error) {
+        console.error("Bot initialization error:", error);
+        console.log("Continuing without bot functionality");
+    }
+
+    // Initialize other components
     initCanvases();
     setupInput();
     setupBotControls();
     startGame();
 }
+
+// Export bot interface for use in other modules
+export { botInterface };
 
 document.addEventListener("DOMContentLoaded", init);
