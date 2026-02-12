@@ -1,68 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>CCAnalysis</title>
-        <link rel="stylesheet" href="styles.css" />
-        <link rel="icon" href="favicon.ico" type="image/x-icon" />
-        <script type="importmap">
-            {
-                "imports": {
-                    "env": "./pkg/cold_clear_2.js"
-                }
-            }
-        </script>
-        <script type="module" src="./pkg/cold_clear_2.js"></script>
-    </head>
-    <body>
-        <div class="container">
-            <div class="score-header">SCORE</div>
-            <div class="score">
-                <div class="score-value">(5x3)</div>
-            </div>
 
-            <div class="reset-header">RESET</div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CCAnalysis</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+</head>
 
-            <div class="controls">
-                <button class="control-btn" id="prevBtn">&lt;</button>
-                <button class="control-btn" id="playBtn">⏵</button>
-                <button class="control-btn" id="nextBtn">&gt;</button>
-            </div>
-
-            <div class="pps">
-                PPS:&nbsp;&nbsp;&nbsp;
-                <input type="text" id="ppsInput" value="0.5" />
-                <!-- <div class="custom-arrows">
-                    <button class="arrow-btn arrow-up" type="button"></button>
-                    <button class="arrow-btn arrow-down" type="button"></button>
-                </div> -->
-            </div>
-
-            <div class="best-move">
-                <canvas id="bestMoveCanvas"></canvas>
-            </div>
-
-            <div class="board">
-                <canvas id="boardCanvas"></canvas>
-            </div>
-
-            <div class="hold-header">HOLD</div>
-            <div class="hold">
-                <canvas id="holdCanvas"></canvas>
-            </div>
-
-            <div class="queue-header">QUEUE</div>
-
-            <div class="queue-area">
-                <canvas id="queueCanvas"></canvas>
-            </div>
-
-            <div class="statistics-header">STATISTICS</div>
-            <div class="statistics">
-                <div class="statistics-size">(5x20)</div>
-            </div>
+<body>
+    <div class="container">
+        <div class="score-header">SCORE</div>
+        <div class="score">
+            <div class="score-value">(5x3)</div>
         </div>
-        <script src="script.js" type="module"></script>
-    </body>
+
+        <div class="reset-header">RESET</div>
+
+        <div class="controls">
+            <button class="control-btn" id="prevBtn">&lt;</button>
+            <button class="control-btn" id="playBtn">⏵</button>
+            <button class="control-btn" id="nextBtn">&gt;</button>
+        </div>
+
+        <div class="pps">
+            PPS:&nbsp;&nbsp;&nbsp;
+            <input type="text" id="ppsInput" value="0.5" />
+        </div>
+
+        <div class="best-move">
+            <canvas id="bestMoveCanvas"></canvas>
+        </div>
+
+        <div class="board">
+            <canvas id="boardCanvas"></canvas>
+        </div>
+
+        <div class="hold-header">HOLD</div>
+        <div class="hold">
+            <canvas id="holdCanvas"></canvas>
+        </div>
+
+        <div class="queue-header">QUEUE</div>
+
+        <div class="queue-area">
+            <canvas id="queueCanvas"></canvas>
+        </div>
+
+        <div class="statistics-header">STATISTICS</div>
+        <div class="statistics">
+            <div class="statistics-size">(5x20)</div>
+        </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>
