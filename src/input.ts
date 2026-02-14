@@ -14,6 +14,8 @@ interface KeyMapping {
 	hardDrop: string[];
 	hold: string[];
 	reset: string[];
+	undo: string[];
+	redo: string[];
 }
 
 interface MovementState {
@@ -34,6 +36,8 @@ export class InputHandler {
 		hardDrop: ["Space"],
 		hold: ["KeyO", "KeyC"],
 		reset: ["KeyQ"],
+		undo: ["KeyZ"],
+		redo: ["KeyY"],
 	};
 
 	held = {
@@ -220,6 +224,14 @@ export class InputHandler {
 
 			case "reset":
 				this.game.reset();
+				break;
+
+			case "undo":
+				this.game.undo();
+				break;
+
+			case "redo":
+				this.game.redo();
 				break;
 		}
 

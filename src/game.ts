@@ -27,25 +27,87 @@ export interface Piece {
 	y: number;
 }
 
+export interface Snapshot {
+	board: Board;
+	current: PieceType | undefined;
+	queue: PieceType[];
+	holdPiece: PieceType | undefined;
+}
+
 export class Tetris {
 	board!: Board;
 	current: Piece | undefined;
 	queue: PieceType[] = [];
 	holdPiece: PieceType | undefined;
+	history: Snapshot[] = [];
+	future: Snapshot[] = [];
 
 	constructor() {
 		this.reset();
 	}
 
 	reset(): void {
+		this.save();
 		this.board = Array(BOARD_HEIGHT)
 			.fill(undefined)
 			.map(() => Array(BOARD_WIDTH).fill(undefined));
 		this.current = undefined;
 		this.holdPiece = undefined;
 		this.queue = [];
-
 		this.spawnPiece();
+	}
+
+	snapshot(): Snapshot {
+		return {
+			board: this.board.map((row) => [...row]),
+			current: this.current?.type,
+			queue: [...this.queue],
+			holdPiece: this.holdPiece,
+		};
+	}
+
+	save(): void {
+		if (this.board === undefined) return;
+		this.history.push(this.snapshot());
+		this.future = [];
+	}
+
+	undo(): boolean {
+		if (!this.history.length) return false;
+		this.future.push(this.snapshot());
+		const snap = this.history.pop()!;
+		this.board = snap.board;
+		this.current =
+			snap.current === undefined
+				? undefined
+				: {
+						type: snap.current,
+						rot: 0,
+						x: SPAWN_X,
+						y: SPAWN_Y,
+					};
+		this.queue = snap.queue;
+		this.holdPiece = snap.holdPiece;
+		return true;
+	}
+
+	redo(): boolean {
+		if (!this.future.length) return false;
+		this.history.push(this.snapshot());
+		const snap = this.future.pop()!;
+		this.board = snap.board;
+		this.current =
+			snap.current === undefined
+				? undefined
+				: {
+						type: snap.current,
+						rot: 0,
+						x: SPAWN_X,
+						y: SPAWN_Y,
+					};
+		this.queue = snap.queue;
+		this.holdPiece = snap.holdPiece;
+		return true;
 	}
 
 	generateBag(): void {
@@ -62,18 +124,15 @@ export class Tetris {
 			if (this.queue.length <= QUEUE_SIZE) this.generateBag();
 			pieceType = this.queue.shift()!;
 		}
-
 		const spawnedPiece = {
 			type: pieceType,
 			rot: 0,
 			x: SPAWN_X,
 			y: SPAWN_Y,
 		};
-
 		if (!this.isValid(spawnedPiece)) {
 			return false;
 		}
-
 		this.current = spawnedPiece;
 		return true;
 	}
@@ -143,6 +202,7 @@ export class Tetris {
 
 	place(): void {
 		if (!this.current) return;
+		this.save();
 		const data = PIECES[this.current.type][this.current.rot];
 		for (let r = 0; r < data.length; r++) {
 			for (let c = 0; c < data[r].length; c++) {

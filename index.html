@@ -1,59 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>CCAnalysis</title>
+		<link rel="stylesheet" href="styles.css" />
+		<link rel="icon" href="favicon.ico" type="image/x-icon" />
+	</head>
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CCAnalysis</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="icon" href="favicon.ico" type="image/x-icon" />
-</head>
+	<body>
+		<div class="container">
+			<div class="score-header glass">SCORE</div>
+			<div class="score glass">
+				<div class="score-value">(5x3)</div>
+			</div>
 
-<body>
-    <div class="container">
-        <div class="score-header">SCORE</div>
-        <div class="score">
-            <div class="score-value">(5x3)</div>
-        </div>
+			<div class="reset-header glass">RESET</div>
+			<div class="controls glass">
+				<button class="control-btn" id="prevBtn">&lt;</button>
+				<button class="control-btn" id="playBtn">⏵</button>
+				<button class="control-btn" id="nextBtn">&gt;</button>
+			</div>
+			<div class="pps glass">
+				PPS:&nbsp;&nbsp;&nbsp;
+				<input type="text" id="ppsInput" value="0.5" />
+			</div>
 
-        <div class="reset-header">RESET</div>
+			<div class="best-move glass">
+				<canvas id="bestMoveCanvas"></canvas>
+			</div>
 
-        <div class="controls">
-            <button class="control-btn" id="prevBtn">&lt;</button>
-            <button class="control-btn" id="playBtn">⏵</button>
-            <button class="control-btn" id="nextBtn">&gt;</button>
-        </div>
+			<div class="board glass">
+				<canvas id="boardCanvas"></canvas>
+			</div>
 
-        <div class="pps">
-            PPS:&nbsp;&nbsp;&nbsp;
-            <input type="text" id="ppsInput" value="0.5" />
-        </div>
+			<div class="hold-header glass">HOLD</div>
+			<div class="hold glass">
+				<canvas id="holdCanvas"></canvas>
+			</div>
 
-        <div class="best-move">
-            <canvas id="bestMoveCanvas"></canvas>
-        </div>
+			<div class="queue-header glass">QUEUE</div>
 
-        <div class="board">
-            <canvas id="boardCanvas"></canvas>
-        </div>
+			<div class="queue-area glass">
+				<canvas id="queueCanvas"></canvas>
+			</div>
 
-        <div class="hold-header">HOLD</div>
-        <div class="hold">
-            <canvas id="holdCanvas"></canvas>
-        </div>
-
-        <div class="queue-header">QUEUE</div>
-
-        <div class="queue-area">
-            <canvas id="queueCanvas"></canvas>
-        </div>
-
-        <div class="statistics-header">STATISTICS</div>
-        <div class="statistics">
-            <div class="statistics-size">(5x20)</div>
-        </div>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
-</body>
-
+			<div class="statistics-header glass">STATISTICS</div>
+			<div class="statistics glass">
+				<div class="statistics-size">(5x20)</div>
+			</div>
+		</div>
+		<script type="module" src="/src/main.ts"></script>
+	</body>
 </html>
