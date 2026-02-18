@@ -13,6 +13,10 @@ export class Renderer {
 	canvases: CanvasElements;
 	tileSize: number;
 
+	fps: number;
+	frameCount: number;
+	lastFpsUpdate: number;
+
 	constructor(game: Tetris) {
 		this.game = game;
 		this.tileSize =
@@ -20,6 +24,10 @@ export class Renderer {
 				Math.min(window.innerWidth / 29, window.innerHeight / 22) / 2,
 			) * 2;
 		this.canvases = this.initCanvases();
+
+		this.fps = 0;
+		this.frameCount = 0;
+		this.lastFpsUpdate = performance.now();
 	}
 
 	initCanvases(): CanvasElements {
@@ -247,9 +255,27 @@ export class Renderer {
 		}
 	}
 
+	updateFPS(): void {
+		this.frameCount++;
+		const now = performance.now();
+		const elapsed = now - this.lastFpsUpdate;
+
+		if (elapsed >= 500) {
+			this.fps = Math.round((this.frameCount * 1000) / elapsed);
+			this.frameCount = 0;
+			this.lastFpsUpdate = now;
+		}
+
+		const ctx = this.canvases.boardCtx;
+		ctx.fillStyle = "white";
+		ctx.font = `${this.tileSize * 0.6}px monospace`;
+		ctx.fillText(`${this.fps} fps`, 4, this.tileSize * 0.7);
+	}
+
 	renderAll(): void {
 		this.drawBoard();
 		this.drawHold();
 		this.drawQueue();
+		this.updateFPS();
 	}
 }

@@ -1,6 +1,6 @@
 import type { Tetris } from "./game";
 
-const DAS = 92;
+const DAS = 83;
 const ARR = 0;
 const SD_ARR = 0;
 

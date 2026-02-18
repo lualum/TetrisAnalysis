@@ -1,6 +1,7 @@
 import {
 	BOARD_HEIGHT,
 	BOARD_WIDTH,
+	CENTERS,
 	KICKS,
 	PIECES,
 	QUEUE_SIZE,
@@ -127,8 +128,8 @@ export class Tetris {
 		const spawnedPiece = {
 			type: pieceType,
 			rot: 0,
-			x: SPAWN_X,
-			y: SPAWN_Y,
+			x: SPAWN_X - CENTERS[pieceType][0][0],
+			y: SPAWN_Y - CENTERS[pieceType][0][1],
 		};
 		if (!this.isValid(spawnedPiece)) {
 			return false;
@@ -174,8 +175,7 @@ export class Tetris {
 		if (!this.current) return false;
 		if (this.current.type === PieceType.O) return true;
 		const rot = (this.current.rot + drot + 4) % 4;
-		const kickTable =
-			this.current.type === PieceType.I ? KICKS.I : KICKS.TJLSZ;
+		const kickTable = KICKS[this.current.type];
 		const kickKey = `${this.current.rot}-${rot}` as keyof typeof kickTable;
 		const kicks = kickTable[kickKey];
 		for (const kick of kicks) {
