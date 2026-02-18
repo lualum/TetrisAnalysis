@@ -1,16 +1,15 @@
 :root {
-	--ts: round(down, min(100vw / 29, 100vh / 22), 2px);
+	--tile-width: min(calc(100vw / 20.4), calc((100vh * 2 / 3) / 20.2));
+	--border-width: calc(var(--tile-width) / 10);
 
 	--opacity: 0.8;
 	--blur: 6px;
 
 	--color-board: #000000cc;
-
-	--color-primary: #222222cc;
-	--color-secondary: #111111cc;
-	--color-header: #999999cc;
+	--color-outline: #ffffff;
 
 	--color-text-primary: white;
+	--color-text-outline: black;
 }
 
 @font-face {
@@ -22,11 +21,13 @@
 	margin: 0;
 	padding: 0;
 	font-family: HunDIN, sans-serif;
-	font-size: calc(var(--ts) / 2);
+	font-size: calc(var(--tile-width) * 0.8);
+	font-weight: 600;
 }
 
 body {
 	background-image: url("background.png");
+	background-color: #000000;
 	background-size: cover;
 	background-position: center;
 	color: var(--color-text-primary);
@@ -37,166 +38,21 @@ body {
 }
 
 .container {
-	display: grid;
-	grid-template-columns: 5fr 10fr 5fr 1fr 5fr;
-	grid-template-rows: 1fr 3fr 1fr 1fr 2fr 1fr 1fr 10fr;
-	height: calc(20 * var(--ts));
-	width: calc(26 * var(--ts));
-	gap: 0;
+	position: relative;
+	height: calc(20 * var(--tile-width) + var(--border-width));
+	width: calc(20 * var(--tile-width) + 2 * var(--border-width));
 }
 
-.score-header {
-	grid-column: 3;
-	grid-row: 1;
-	background-color: var(--color-header);
-	color: var(--color-text-primary);
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.app-loading .container {
+	visibility: hidden;
 }
 
-.score {
-	grid-column: 3;
-	grid-row: 2;
-	background-color: var(--color-primary);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.reset-header {
-	grid-column: 1;
-	grid-row: 4;
-	background-color: var(--color-header);
-	color: var(--color-text-primary);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.controls {
-	grid-column: 1;
-	grid-row: 5;
-	background-color: var(--color-primary);
-	display: flex;
-	align-items: center;
-	justify-content: space-evenly;
-}
-
-.control-btn {
-	background-color: transparent;
-	color: var(--color-text-primary);
-	border: none;
-	cursor: pointer;
-	font-size: var(--ts);
-	width: var(--ts);
-	height: var(--ts);
-}
-
-.pps {
-	grid-column: 1;
-	grid-row: 6;
-	background-color: var(--color-secondary);
-	color: var(--color-text-primary);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.pps input {
-	background-color: var(--color-primary);
-	color: var(--color-text-primary);
-	border: none;
-	outline: none;
-	padding: 3px 1px;
-	border-radius: 4px;
-	width: 60px;
-	text-align: center;
-}
-
-.best-move {
-	grid-column: 1;
-	grid-row: 8 / 9;
-	background-color: var(--color-primary);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.board {
-	grid-column: 2;
-	grid-row: 1 / 9;
-	background-color: var(--color-board);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.hold-header {
-	grid-column: 1;
-	grid-row: 1;
-	background-color: var(--color-header);
-	color: var(--color-text-primary);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.hold {
-	grid-column: 1;
-	grid-row: 2;
-	background-color: var(--color-primary);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.queue-header {
-	grid-column: 3;
-	grid-row: 3;
-	background-color: var(--color-header);
-	color: var(--color-text-primary);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.queue-area {
-	grid-column: 3;
-	grid-row: 4 / 9;
-	background-color: var(--color-primary);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.statistics-header {
-	grid-column: 5;
-	grid-row: 1;
-	background-color: var(--color-header);
-	color: var(--color-text-primary);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.statistics {
-	grid-column: 5;
-	grid-row: 2 / 9;
-	background-color: var(--color-primary);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-canvas {
+#gameCanvas {
+	background: transparent;
 	display: block;
+	position: absolute;
+	top: calc(-20 * var(--tile-width));
+	left: 0;
 	width: 100%;
-	height: 100%;
+	height: calc(40 * var(--tile-width) + var(--border-width));
 }

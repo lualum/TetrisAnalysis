@@ -5,7 +5,7 @@ Access Here: https://lualum.github.io/TetrisAnalysis/
 A modern **Tetris gameplay analysis engine** inspired by chess engines and post-game chess analysis tools.
 
 This project uses modern guideline Tetris mechanics — including **Super Rotation System (SRS)** and configurable **DAS/ARR handling**.
-By integrating **Misamino** and the **Tetris Bot Protocol (TBP)**, it provides engine-backed move analysis and performance metrics similar to what engines like Stockfish provide for chess.
+The local development server can bridge gameplay snapshots to the bundled **Blockfish** engine for move analysis.
 
 ## Installation
 

@@ -2,44 +2,58 @@ import {
 	BOARD_HEIGHT,
 	BOARD_WIDTH,
 	CENTERS,
+	CHEESE_RACE_GARBAGE_LINES,
+	CHEESE_RACE_MESSINESS,
 	KICKS,
 	PIECES,
-	QUEUE_SIZE,
+	NEXT_SIZE,
 	SPAWN_X,
 	SPAWN_Y,
 } from "./constants";
 
 export enum PieceType {
-	I = 0,
-	O = 1,
-	T = 2,
-	J = 3,
-	L = 4,
-	S = 5,
-	Z = 6,
+	I = "I",
+	O = "O",
+	T = "T",
+	J = "J",
+	L = "L",
+	S = "S",
+	Z = "Z",
 }
 
-export type Board = (PieceType | undefined)[][];
+export enum GarbageType {
+	Garbage = "G",
+}
+
+export enum Orientation {
+	north = "north",
+	east = "east",
+	south = "south",
+	west = "west",
+}
+
+export type CellType = PieceType | GarbageType;
+export type Board = (CellType | null)[][];
 
 export interface Piece {
 	type: PieceType;
-	rot: number;
+	orientation: Orientation;
 	x: number;
 	y: number;
 }
 
 export interface Snapshot {
 	board: Board;
-	current: PieceType | undefined;
-	queue: PieceType[];
-	holdPiece: PieceType | undefined;
+	current: PieceType | null;
+	next: PieceType[];
+	holdPiece: PieceType | null;
 }
 
 export class Tetris {
 	board!: Board;
-	current: Piece | undefined;
-	queue: PieceType[] = [];
-	holdPiece: PieceType | undefined;
+	current!: Piece | null;
+	next: PieceType[] = [];
+	holdPiece!: PieceType | null;
 	history: Snapshot[] = [];
 	future: Snapshot[] = [];
 
@@ -48,88 +62,147 @@ export class Tetris {
 	}
 
 	reset(): void {
-		this.save();
 		this.board = Array(BOARD_HEIGHT)
-			.fill(undefined)
-			.map(() => Array(BOARD_WIDTH).fill(undefined));
-		this.current = undefined;
-		this.holdPiece = undefined;
-		this.queue = [];
+			.fill(null)
+			.map(() => Array(BOARD_WIDTH).fill(null));
+		this.addCheeseGarbage();
+		this.current = null;
+		this.holdPiece = null;
+		this.next = [];
+		this.history = [];
+		this.future = [];
 		this.spawnPiece();
+		this.save();
+	}
+
+	private addCheeseGarbage(): void {
+		this.pushCheeseGarbage(this.getCheeseGarbageDeficit());
+	}
+
+	private countCheeseGarbageRows(): number {
+		return this.board.filter((row) =>
+			row.some((cell) => cell === GarbageType.Garbage),
+		).length;
+	}
+
+	private getCheeseGarbageDeficit(): number {
+		const garbageLines = Math.max(
+			0,
+			Math.min(BOARD_HEIGHT, CHEESE_RACE_GARBAGE_LINES),
+		);
+		return Math.max(0, garbageLines - this.countCheeseGarbageRows());
+	}
+
+	private createCheeseGarbageRow(hole: number): Board[number] {
+		return Array.from({ length: BOARD_WIDTH }, (_, col) =>
+			col === hole ? null : GarbageType.Garbage,
+		);
+	}
+
+	private getBottomGarbageHole(): number | null {
+		for (let row = BOARD_HEIGHT - 1; row >= 0; row--) {
+			if (!this.board[row].some((cell) => cell === GarbageType.Garbage)) continue;
+
+			const hole = this.board[row].findIndex(
+				(cell) => cell !== GarbageType.Garbage,
+			);
+			return hole === -1 ? null : hole;
+		}
+
+		return null;
+	}
+
+	private pushCheeseGarbage(lines: number): void {
+		if (lines <= 0) return;
+
+		const messiness = Math.max(0, Math.min(100, CHEESE_RACE_MESSINESS));
+		const bottomHole = this.getBottomGarbageHole();
+		let hole = bottomHole ?? Math.floor(Math.random() * BOARD_WIDTH);
+
+		for (let i = 0; i < lines; i++) {
+			if ((i > 0 || bottomHole !== null) && Math.random() * 100 < messiness) {
+				let nextHole = Math.floor(Math.random() * BOARD_WIDTH);
+				while (nextHole === hole && BOARD_WIDTH > 1) {
+					nextHole = Math.floor(Math.random() * BOARD_WIDTH);
+				}
+				hole = nextHole;
+			}
+
+			this.board.shift();
+			this.board.push(this.createCheeseGarbageRow(hole));
+		}
 	}
 
 	snapshot(): Snapshot {
 		return {
 			board: this.board.map((row) => [...row]),
-			current: this.current?.type,
-			queue: [...this.queue],
+			current: this.current ? this.current.type : null,
+			next: [...this.next],
 			holdPiece: this.holdPiece,
 		};
 	}
 
+	private restore(snap: Snapshot): void {
+		this.board = snap.board.map((row) => [...row]);
+		this.next = [...snap.next];
+		this.holdPiece = snap.holdPiece;
+		this.current = null;
+		if (snap.current) {
+			this.spawnPiece(snap.current);
+		}
+	}
+
 	save(): void {
-		if (this.board === undefined) return;
+		if (this.board === null) return;
 		this.history.push(this.snapshot());
 		this.future = [];
 	}
 
 	undo(): boolean {
-		if (!this.history.length) return false;
-		this.future.push(this.snapshot());
-		const snap = this.history.pop()!;
-		this.board = snap.board;
-		this.current =
-			snap.current === undefined
-				? undefined
-				: {
-						type: snap.current,
-						rot: 0,
-						x: SPAWN_X,
-						y: SPAWN_Y,
-					};
-		this.queue = snap.queue;
-		this.holdPiece = snap.holdPiece;
+		if (this.history.length <= 1) return false;
+		this.future.push(this.history.pop()!);
+		this.restore(this.history[this.history.length - 1]);
 		return true;
 	}
 
 	redo(): boolean {
 		if (!this.future.length) return false;
-		this.history.push(this.snapshot());
 		const snap = this.future.pop()!;
-		this.board = snap.board;
-		this.current =
-			snap.current === undefined
-				? undefined
-				: {
-						type: snap.current,
-						rot: 0,
-						x: SPAWN_X,
-						y: SPAWN_Y,
-					};
-		this.queue = snap.queue;
-		this.holdPiece = snap.holdPiece;
+		this.history.push(snap);
+		this.restore(snap);
 		return true;
 	}
 
 	generateBag(): void {
-		const pieces: PieceType[] = [0, 1, 2, 3, 4, 5, 6];
+		const pieces: PieceType[] = [
+			PieceType.I,
+			PieceType.O,
+			PieceType.T,
+			PieceType.J,
+			PieceType.L,
+			PieceType.S,
+			PieceType.Z,
+		];
 		for (let i = pieces.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
 			[pieces[i], pieces[j]] = [pieces[j], pieces[i]];
 		}
-		this.queue.push(...pieces);
+		this.next.push(...pieces);
 	}
 
-	spawnPiece(pieceType?: PieceType): boolean {
-		if (pieceType === undefined) {
-			if (this.queue.length <= QUEUE_SIZE) this.generateBag();
-			pieceType = this.queue.shift()!;
-		}
+	shiftNext(): PieceType {
+		if (this.next.length <= NEXT_SIZE) this.generateBag();
+		return this.next.shift()!;
+	}
+
+	spawnPiece(piece?: PieceType | null): boolean {
+		if (!piece) piece = this.shiftNext();
+
 		const spawnedPiece = {
-			type: pieceType,
-			rot: 0,
-			x: SPAWN_X - CENTERS[pieceType][0][0],
-			y: SPAWN_Y - CENTERS[pieceType][0][1],
+			type: piece,
+			orientation: Orientation.north,
+			x: SPAWN_X - CENTERS[piece][Orientation.north][0],
+			y: SPAWN_Y - CENTERS[piece][Orientation.north][1],
 		};
 		if (!this.isValid(spawnedPiece)) {
 			return false;
@@ -144,14 +217,13 @@ export class Tetris {
 
 	isValid(piece = this.current): boolean {
 		if (!piece) return false;
-		const data = PIECES[piece.type][piece.rot];
+		const data = PIECES[piece.type][piece.orientation];
 		for (let r = 0; r < data.length; r++) {
 			for (let c = 0; c < data[r].length; c++) {
 				if (!data[r][c]) continue;
 				const x = piece.x + c;
 				const y = piece.y + r;
-				if (!this.inBounds(x, y) || this.board[y][x] !== undefined)
-					return false;
+				if (!this.inBounds(x, y) || this.board[y][x] !== null) return false;
 			}
 		}
 		return true;
@@ -174,16 +246,29 @@ export class Tetris {
 	rotate(drot: number): boolean {
 		if (!this.current) return false;
 		if (this.current.type === PieceType.O) return true;
-		const rot = (this.current.rot + drot + 4) % 4;
+
+		const orientationKey = [
+			Orientation.north,
+			Orientation.east,
+			Orientation.south,
+			Orientation.west,
+		];
+
+		const orientationFrom = orientationKey.indexOf(this.current.orientation);
+		const orientationTo = (orientationFrom + drot + 4) % 4;
+		const orientation = orientationKey[orientationTo];
+
 		const kickTable = KICKS[this.current.type];
-		const kickKey = `${this.current.rot}-${rot}` as keyof typeof kickTable;
+		const kickKey =
+			`${orientationFrom}-${orientationTo}` as keyof typeof kickTable;
 		const kicks = kickTable[kickKey];
+		console.log(kickKey);
 		for (const kick of kicks) {
 			const x = this.current.x + kick[0];
 			const y = this.current.y - kick[1];
 			const piece = {
 				...this.current,
-				rot,
+				orientation,
 				x,
 				y,
 			};
@@ -198,12 +283,20 @@ export class Tetris {
 	hardDrop(): void {
 		while (this.move(0, 1)) {}
 		this.place();
+		this.save();
+	}
+
+	sonicDrop(): boolean {
+		let moved = false;
+		while (this.move(0, 1)) {
+			moved = true;
+		}
+		return moved;
 	}
 
 	place(): void {
 		if (!this.current) return;
-		this.save();
-		const data = PIECES[this.current.type][this.current.rot];
+		const data = PIECES[this.current.type][this.current.orientation];
 		for (let r = 0; r < data.length; r++) {
 			for (let c = 0; c < data[r].length; c++) {
 				if (!data[r][c]) continue;
@@ -212,22 +305,30 @@ export class Tetris {
 				this.board[y][x] = this.current.type;
 			}
 		}
-		this.clearLines();
+		const clearedLines = this.clearLines();
+		if (clearedLines === 0) {
+			this.addCheeseGarbage();
+		}
 		this.spawnPiece();
 	}
 
-	clearLines(): void {
-		for (let r = 39; r >= 0; r--) {
-			if (this.board[r].every((cell) => cell !== undefined)) {
+	clearLines(): number {
+		let clearedLines = 0;
+
+		for (let r = BOARD_HEIGHT - 1; r >= 0; r--) {
+			if (this.board[r].every((cell) => cell !== null)) {
 				this.board.splice(r, 1);
-				this.board.unshift(Array(10).fill(undefined));
+				this.board.unshift(Array(BOARD_WIDTH).fill(null));
+				clearedLines++;
 				r++;
 			}
 		}
+
+		return clearedLines;
 	}
 
 	hold(): void {
-		if (this.current === undefined) return;
+		if (this.current === null) return;
 		const temp = this.current.type;
 		this.spawnPiece(this.holdPiece);
 		this.holdPiece = temp;

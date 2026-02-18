@@ -12,7 +12,7 @@ const held = {
 	right: false,
 };
 
-const queued: MovementState = {
+const nextd: MovementState = {
 	left: false,
 	right: false,
 	down: false,
@@ -33,12 +33,12 @@ function getActionFromKey(key: string): keyof Keybinds | undefined {
 
 function applyMovement(): void {
 	while (true) {
-		if (queued.down && game.move(0, 1)) {
+		if (nextd.down && game.move(0, 1)) {
 			if (SD_ARRTimer !== true) {
-				queued.down = false;
+				nextd.down = false;
 				if (SD_ARRTimer) {
 					SD_ARRTimer = window.setTimeout(() => {
-						queued.down = true;
+						nextd.down = true;
 						applyMovement();
 					}, SD_ARR);
 				}
@@ -46,12 +46,12 @@ function applyMovement(): void {
 			continue;
 		}
 
-		if (queued.left && game.move(-1, 0)) {
+		if (nextd.left && game.move(-1, 0)) {
 			if (ARRTimer !== true) {
-				queued.left = false;
+				nextd.left = false;
 				if (ARRTimer) {
 					ARRTimer = window.setTimeout(() => {
-						queued.left = true;
+						nextd.left = true;
 						applyMovement();
 					}, ARR);
 				}
@@ -59,12 +59,12 @@ function applyMovement(): void {
 			continue;
 		}
 
-		if (queued.right && game.move(1, 0)) {
+		if (nextd.right && game.move(1, 0)) {
 			if (ARRTimer !== true) {
-				queued.right = false;
+				nextd.right = false;
 				if (ARRTimer) {
 					ARRTimer = window.setTimeout(() => {
-						queued.right = true;
+						nextd.right = true;
 						applyMovement();
 					}, ARR);
 				}
@@ -77,12 +77,12 @@ function applyMovement(): void {
 }
 
 function startARR(dir: keyof MovementState): void {
-	queued[dir] = true;
+	nextd[dir] = true;
 
 	if (dir === "down") {
 		if (SD_ARR > 0) {
 			SD_ARRTimer = window.setTimeout(() => {
-				queued.down = true;
+				nextd.down = true;
 				applyMovement();
 			}, SD_ARR);
 		} else {
@@ -94,7 +94,7 @@ function startARR(dir: keyof MovementState): void {
 
 	if (ARR > 0) {
 		ARRTimer = window.setTimeout(() => {
-			queued[dir] = true;
+			nextd[dir] = true;
 			applyMovement();
 		}, ARR);
 	} else {
@@ -105,7 +105,7 @@ function startARR(dir: keyof MovementState): void {
 }
 
 function startMovement(dir: keyof MovementState): void {
-	queued[dir] = true;
+	nextd[dir] = true;
 
 	if (dir === "down") {
 		startARR(dir);
@@ -118,7 +118,7 @@ function startMovement(dir: keyof MovementState): void {
 }
 
 function stopMovement(dir: keyof MovementState): void {
-	queued[dir] = false;
+	nextd[dir] = false;
 
 	if (dir === "down" && SD_ARRTimer) {
 		if (SD_ARRTimer !== true) clearTimeout(SD_ARRTimer);
