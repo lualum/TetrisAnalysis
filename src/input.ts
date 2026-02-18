@@ -1,22 +1,5 @@
-import type { Tetris } from "./game";
-
-const DAS = 83;
-const ARR = 0;
-const SD_ARR = 0;
-
-interface KeyMapping {
-	left: string[];
-	right: string[];
-	down: string[];
-	rotateClockwise: string[];
-	rotateCounterClockwise: string[];
-	rotate180: string[];
-	hardDrop: string[];
-	hold: string[];
-	reset: string[];
-	undo: string[];
-	redo: string[];
-}
+import { DAS, ARR, SD_ARR, Keybinds, keybinds } from "./config";
+import { game } from "./main";
 
 interface MovementState {
 	left: boolean;
@@ -24,254 +7,229 @@ interface MovementState {
 	down: boolean;
 }
 
-export class InputHandler {
-	game: Tetris;
-	keyMappings: KeyMapping = {
-		left: ["KeyR", "ArrowLeft"],
-		right: ["KeyU", "ArrowRight"],
-		down: ["KeyV", "ArrowDown"],
-		rotateClockwise: ["KeyI", "ArrowUp", "KeyX"],
-		rotateCounterClockwise: ["KeyE", "KeyS"],
-		rotate180: ["KeyW"],
-		hardDrop: ["Space"],
-		hold: ["KeyO", "KeyC"],
-		reset: ["KeyQ"],
-		undo: ["KeyZ"],
-		redo: ["KeyY"],
-	};
+const held = {
+	left: false,
+	right: false,
+};
 
-	held = {
-		left: false,
-		right: false,
-	};
+const queued: MovementState = {
+	left: false,
+	right: false,
+	down: false,
+};
 
-	queued: MovementState = {
-		left: false,
-		right: false,
-		down: false,
-	};
+let DASTimer: number | undefined;
+let ARRTimer: number | true | undefined;
+let SD_ARRTimer: number | true | undefined;
 
-	DASTimer: number | undefined;
-	ARRTimer: number | true | undefined;
-	SD_ARRTimer: number | true | undefined;
-
-	constructor(game: Tetris) {
-		this.game = game;
-	}
-
-	getActionFromKey(key: string): keyof KeyMapping | undefined {
-		for (const [action, keys] of Object.entries(this.keyMappings)) {
-			if (keys.includes(key)) {
-				return action as keyof KeyMapping;
-			}
+function getActionFromKey(key: string): keyof Keybinds | undefined {
+	for (const [action, keys] of Object.entries(keybinds)) {
+		if (keys.includes(key)) {
+			return action as keyof Keybinds;
 		}
-		return undefined;
 	}
+	return undefined;
+}
 
-	applyMovement(): void {
-		while (true) {
-			if (this.queued.down && this.game.move(0, 1)) {
-				if (this.SD_ARRTimer !== true) {
-					this.queued.down = false;
-					if (this.SD_ARRTimer) {
-						this.SD_ARRTimer = window.setTimeout(() => {
-							this.queued.down = true;
-							this.applyMovement();
-						}, SD_ARR);
-					}
+function applyMovement(): void {
+	while (true) {
+		if (queued.down && game.move(0, 1)) {
+			if (SD_ARRTimer !== true) {
+				queued.down = false;
+				if (SD_ARRTimer) {
+					SD_ARRTimer = window.setTimeout(() => {
+						queued.down = true;
+						applyMovement();
+					}, SD_ARR);
 				}
-				continue;
 			}
+			continue;
+		}
 
-			if (this.queued.left && this.game.move(-1, 0)) {
-				if (this.ARRTimer !== true) {
-					this.queued.left = false;
-					if (this.ARRTimer) {
-						this.ARRTimer = window.setTimeout(() => {
-							this.queued.left = true;
-							this.applyMovement();
-						}, ARR);
-					}
+		if (queued.left && game.move(-1, 0)) {
+			if (ARRTimer !== true) {
+				queued.left = false;
+				if (ARRTimer) {
+					ARRTimer = window.setTimeout(() => {
+						queued.left = true;
+						applyMovement();
+					}, ARR);
 				}
-				continue;
 			}
+			continue;
+		}
 
-			if (this.queued.right && this.game.move(1, 0)) {
-				if (this.ARRTimer !== true) {
-					this.queued.right = false;
-					if (this.ARRTimer) {
-						this.ARRTimer = window.setTimeout(() => {
-							this.queued.right = true;
-							this.applyMovement();
-						}, ARR);
-					}
+		if (queued.right && game.move(1, 0)) {
+			if (ARRTimer !== true) {
+				queued.right = false;
+				if (ARRTimer) {
+					ARRTimer = window.setTimeout(() => {
+						queued.right = true;
+						applyMovement();
+					}, ARR);
 				}
-				continue;
 			}
-
-			break;
+			continue;
 		}
+
+		break;
 	}
+}
 
-	startMovement(dir: keyof MovementState): void {
-		this.queued[dir] = true;
+function startARR(dir: keyof MovementState): void {
+	queued[dir] = true;
 
-		if (dir === "down") {
-			this.startARR(dir);
-			return;
-		}
-
-		this.DASTimer = window.setTimeout(() => {
-			this.startARR(dir);
-		}, DAS);
-	}
-
-	startARR(dir: keyof MovementState): void {
-		this.queued[dir] = true;
-
-		if (dir === "down") {
-			if (SD_ARR > 0) {
-				this.SD_ARRTimer = window.setTimeout(() => {
-					this.queued.down = true;
-					this.applyMovement();
-				}, SD_ARR);
-			} else {
-				this.SD_ARRTimer = true;
-			}
-			this.applyMovement();
-			return;
-		}
-
-		if (ARR > 0) {
-			this.ARRTimer = window.setTimeout(() => {
-				this.queued[dir] = true;
-				this.applyMovement();
-			}, ARR);
+	if (dir === "down") {
+		if (SD_ARR > 0) {
+			SD_ARRTimer = window.setTimeout(() => {
+				queued.down = true;
+				applyMovement();
+			}, SD_ARR);
 		} else {
-			this.ARRTimer = true;
+			SD_ARRTimer = true;
 		}
-		this.applyMovement();
+		applyMovement();
+		return;
 	}
 
-	stopMovement(dir: keyof MovementState): void {
-		this.queued[dir] = false;
-
-		if (dir === "down" && this.SD_ARRTimer) {
-			if (this.SD_ARRTimer !== true) clearTimeout(this.SD_ARRTimer);
-			this.SD_ARRTimer = undefined;
-			return;
-		}
-
-		if (this.DASTimer) {
-			clearTimeout(this.DASTimer);
-			this.DASTimer = undefined;
-		}
-
-		if (this.ARRTimer) {
-			if (this.ARRTimer !== true) clearTimeout(this.ARRTimer);
-			this.ARRTimer = undefined;
-		}
+	if (ARR > 0) {
+		ARRTimer = window.setTimeout(() => {
+			queued[dir] = true;
+			applyMovement();
+		}, ARR);
+	} else {
+		ARRTimer = true;
 	}
 
-	handleKeyDown = (event: KeyboardEvent): void => {
-		if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
-			return;
-		}
+	applyMovement();
+}
 
-		if (event.repeat) return;
+function startMovement(dir: keyof MovementState): void {
+	queued[dir] = true;
 
-		const action = this.getActionFromKey(event.code);
-		if (!action) return;
-
-		event.preventDefault();
-
-		switch (action) {
-			case "left":
-				this.held.left = true;
-				this.stopMovement("right");
-				this.startMovement("left");
-				break;
-
-			case "right":
-				this.held.right = true;
-				this.stopMovement("left");
-				this.startMovement("right");
-				break;
-
-			case "down":
-				this.startMovement("down");
-				break;
-
-			case "rotateClockwise":
-				this.game.rotate(1);
-				break;
-
-			case "rotateCounterClockwise":
-				this.game.rotate(-1);
-				break;
-
-			case "rotate180":
-				this.game.rotate(2);
-				break;
-
-			case "hardDrop":
-				this.game.hardDrop();
-				break;
-
-			case "hold":
-				this.game.hold();
-				break;
-
-			case "reset":
-				this.game.reset();
-				break;
-
-			case "undo":
-				this.game.undo();
-				break;
-
-			case "redo":
-				this.game.redo();
-				break;
-		}
-
-		this.applyMovement();
-	};
-
-	handleKeyUp = (event: KeyboardEvent): void => {
-		if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
-			return;
-		}
-
-		const action = this.getActionFromKey(event.code);
-
-		switch (action) {
-			case "left":
-				this.held.left = false;
-				this.stopMovement("left");
-				if (this.held.right) this.startMovement("right");
-				break;
-			case "right":
-				this.held.right = false;
-				this.stopMovement("right");
-				if (this.held.left) this.startMovement("left");
-				break;
-			case "down":
-				this.stopMovement("down");
-				break;
-		}
-	};
-
-	setup(): void {
-		document.addEventListener("keydown", this.handleKeyDown);
-		document.addEventListener("keyup", this.handleKeyUp);
+	if (dir === "down") {
+		startARR(dir);
+		return;
 	}
 
-	cleanup(): void {
-		this.stopMovement("left");
-		this.stopMovement("right");
-		this.stopMovement("down");
-		document.removeEventListener("keydown", this.handleKeyDown);
-		document.removeEventListener("keyup", this.handleKeyUp);
+	DASTimer = window.setTimeout(() => {
+		startARR(dir);
+	}, DAS);
+}
+
+function stopMovement(dir: keyof MovementState): void {
+	queued[dir] = false;
+
+	if (dir === "down" && SD_ARRTimer) {
+		if (SD_ARRTimer !== true) clearTimeout(SD_ARRTimer);
+		SD_ARRTimer = undefined;
+		return;
 	}
+
+	if (DASTimer) {
+		clearTimeout(DASTimer);
+		DASTimer = undefined;
+	}
+
+	if (ARRTimer) {
+		if (ARRTimer !== true) clearTimeout(ARRTimer);
+		ARRTimer = undefined;
+	}
+}
+
+function handleKeyDown(event: KeyboardEvent): void {
+	if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+	if (event.repeat) return;
+
+	const action = getActionFromKey(event.code);
+	if (!action) return;
+
+	event.preventDefault();
+
+	switch (action) {
+		case "left":
+			held.left = true;
+			stopMovement("right");
+			startMovement("left");
+			break;
+
+		case "right":
+			held.right = true;
+			stopMovement("left");
+			startMovement("right");
+			break;
+
+		case "down":
+			startMovement("down");
+			break;
+
+		case "rotateClockwise":
+			game.rotate(1);
+			break;
+
+		case "rotateCounterClockwise":
+			game.rotate(-1);
+			break;
+
+		case "rotate180":
+			game.rotate(2);
+			break;
+
+		case "hardDrop":
+			game.hardDrop();
+			break;
+
+		case "hold":
+			game.hold();
+			break;
+
+		case "reset":
+			game.reset();
+			break;
+
+		case "undo":
+			game.undo();
+			break;
+
+		case "redo":
+			game.redo();
+			break;
+	}
+
+	applyMovement();
+}
+
+function handleKeyUp(event: KeyboardEvent): void {
+	if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+
+	const action = getActionFromKey(event.code);
+
+	switch (action) {
+		case "left":
+			held.left = false;
+			stopMovement("left");
+			if (held.right) startMovement("right");
+			break;
+		case "right":
+			held.right = false;
+			stopMovement("right");
+			if (held.left) startMovement("left");
+			break;
+		case "down":
+			stopMovement("down");
+			break;
+	}
+}
+
+export function setupInput(): void {
+	document.addEventListener("keydown", handleKeyDown);
+	document.addEventListener("keyup", handleKeyUp);
+}
+
+export function cleanupInput(): void {
+	stopMovement("left");
+	stopMovement("right");
+	stopMovement("down");
+	document.removeEventListener("keydown", handleKeyDown);
+	document.removeEventListener("keyup", handleKeyUp);
 }
