@@ -34,9 +34,7 @@ export class MisaMinoWrapper {
 
 	constructor(game: Tetris) {
 		this.game = game;
-		this.worker = new Worker(
-			new URL("../public/misaImport.js", import.meta.url),
-		);
+		this.worker = new Worker(`${import.meta.env.BASE_URL}misaImport.js`);
 		this.worker.onmessage = this.onWorkerMessage.bind(this);
 
 		this.playBtn.addEventListener("click", () =>
