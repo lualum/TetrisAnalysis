@@ -10,6 +10,88 @@ export interface OutlineMino {
 	previewIndex?: number;
 }
 
+interface GridPoint {
+	x: number;
+	y: number;
+}
+
+interface BoundaryEdge {
+	start: GridPoint;
+	end: GridPoint;
+}
+
+interface OutlineGroup {
+	alpha: number;
+	minos: OutlineMino[];
+}
+
+function pointKey(point: GridPoint): string {
+	return `${point.x}:${point.y}`;
+}
+
+function edgeDirection(edge: BoundaryEdge): number {
+	if (edge.end.x > edge.start.x) return 0;
+	if (edge.end.y > edge.start.y) return 1;
+	if (edge.end.x < edge.start.x) return 2;
+	return 3;
+}
+
+function traceBoundaryPaths(edges: BoundaryEdge[]): GridPoint[][] {
+	const outgoing = new Map<string, BoundaryEdge[]>();
+
+	for (const edge of edges) {
+		const key = pointKey(edge.start);
+		const candidates = outgoing.get(key) ?? [];
+		candidates.push(edge);
+		outgoing.set(key, candidates);
+	}
+
+	const paths: GridPoint[][] = [];
+	let remainingEdges = edges.length;
+
+	while (remainingEdges > 0) {
+		const firstCandidates = [...outgoing.values()].find((candidates) => candidates.length > 0);
+		if (!firstCandidates) break;
+
+		const firstEdge = firstCandidates.pop()!;
+		remainingEdges--;
+		const path = [firstEdge.start, firstEdge.end];
+		let currentEdge = firstEdge;
+
+		while (pointKey(currentEdge.end) !== pointKey(firstEdge.start)) {
+			const candidates = outgoing.get(pointKey(currentEdge.end));
+			if (!candidates?.length) break;
+
+			const direction = edgeDirection(currentEdge);
+			const turnPreference = [
+				(direction + 1) % 4,
+				direction,
+				(direction + 3) % 4,
+				(direction + 2) % 4,
+			];
+			let nextIndex = 0;
+
+			for (const preferredDirection of turnPreference) {
+				const candidateIndex = candidates.findIndex(
+					(candidate) => edgeDirection(candidate) === preferredDirection,
+				);
+				if (candidateIndex !== -1) {
+					nextIndex = candidateIndex;
+					break;
+				}
+			}
+
+			currentEdge = candidates.splice(nextIndex, 1)[0];
+			remainingEdges--;
+			path.push(currentEdge.end);
+		}
+
+		paths.push(path);
+	}
+
+	return paths;
+}
+
 export function drawMinoAt(
 	graphics: Graphics,
 	context: RenderContext,
@@ -144,44 +226,63 @@ export function drawMinoOutlines(
 ): void {
 	const { layout, tileSize } = context;
 	const lineWidth = Math.max(1, tileSize * 0.08);
-	const minoKeys = new Set(
-		minos.map((mino) => `${mino.previewIndex ?? ""}:${mino.x}:${mino.y}`),
-	);
-	const hasNeighbor = (mino: OutlineMino, dx: number, dy: number): boolean =>
-		minoKeys.has(`${mino.previewIndex ?? ""}:${mino.x + dx}:${mino.y + dy}`);
+	const groups = new Map<string, OutlineGroup>();
 
 	for (const mino of minos) {
-		const left = layout.board.x + mino.x * tileSize;
-		const top = layout.board.y + (mino.y - BOARD_HEIGHT_HIDDEN) * tileSize;
-		const right = left + tileSize;
-		const bottom = top + tileSize;
-		const color = COLORS[mino.type] || "#888888";
 		const alpha = alphaForMino(mino);
+		const key = `${mino.previewIndex ?? ""}:${mino.type}:${alpha}`;
+		const group = groups.get(key) ?? { alpha, minos: [] };
+		group.minos.push(mino);
+		groups.set(key, group);
+	}
 
-		if (!hasNeighbor(mino, 0, -1)) {
-			graphics
-				.moveTo(left, top)
-				.lineTo(right, top)
-				.stroke({ color, width: lineWidth, alpha });
+	for (const { alpha, minos: groupedMinos } of groups.values()) {
+		const minosByPosition = new Map(
+			groupedMinos.map((mino) => [`${mino.x}:${mino.y}`, mino]),
+		);
+		const occupied = new Set(minosByPosition.keys());
+		const edges: BoundaryEdge[] = [];
+
+		for (const mino of minosByPosition.values()) {
+			const { x, y } = mino;
+			if (!occupied.has(`${x}:${y - 1}`)) {
+				edges.push({ start: { x, y }, end: { x: x + 1, y } });
+			}
+			if (!occupied.has(`${x + 1}:${y}`)) {
+				edges.push({ start: { x: x + 1, y }, end: { x: x + 1, y: y + 1 } });
+			}
+			if (!occupied.has(`${x}:${y + 1}`)) {
+				edges.push({ start: { x: x + 1, y: y + 1 }, end: { x, y: y + 1 } });
+			}
+			if (!occupied.has(`${x - 1}:${y}`)) {
+				edges.push({ start: { x, y: y + 1 }, end: { x, y } });
+			}
 		}
-		if (!hasNeighbor(mino, 1, 0)) {
-			graphics
-				.moveTo(right, top)
-				.lineTo(right, bottom)
-				.stroke({ color, width: lineWidth, alpha });
+
+		for (const path of traceBoundaryPaths(edges)) {
+			const firstPoint = path[0];
+			graphics.moveTo(
+				layout.board.x + firstPoint.x * tileSize,
+				layout.board.y + (firstPoint.y - BOARD_HEIGHT_HIDDEN) * tileSize,
+			);
+
+			for (const point of path.slice(1)) {
+				graphics.lineTo(
+					layout.board.x + point.x * tileSize,
+					layout.board.y + (point.y - BOARD_HEIGHT_HIDDEN) * tileSize,
+				);
+			}
+
+			graphics.closePath();
 		}
-		if (!hasNeighbor(mino, 0, 1)) {
-			graphics
-				.moveTo(left, bottom)
-				.lineTo(right, bottom)
-				.stroke({ color, width: lineWidth, alpha });
-		}
-		if (!hasNeighbor(mino, -1, 0)) {
-			graphics
-				.moveTo(left, top)
-				.lineTo(left, bottom)
-				.stroke({ color, width: lineWidth, alpha });
-		}
+
+		const firstMino = groupedMinos[0];
+		graphics.stroke({
+			color: COLORS[firstMino.type] || "#888888",
+			width: lineWidth,
+			alpha,
+			alignment: 1,
+		});
 	}
 }
 
