@@ -15,6 +15,19 @@ type Snapshot = {
 
 type Analysis = { id: number; suggestions: { inputs: string[] }[] };
 
+function resolveBlockfishExecutable(): string {
+	const candidates = [
+		resolve(projectDirectory, "blockfish"),
+		resolve(projectDirectory, "../blockfish-dev/target/debug/blockfish"),
+		resolve(projectDirectory, "../blockfish-dev/target/release/blockfish"),
+	];
+	const executable = candidates.find((candidate) => existsSync(candidate));
+	if (!executable) {
+		throw new Error(`Blockfish executable not found. Tried: ${candidates.join(", ")}`);
+	}
+	return executable;
+}
+
 function varint(value: number): number[] {
 	const bytes: number[] = [];
 	while (value >= 0x80) {
@@ -153,10 +166,7 @@ class BlockfishBridge {
 	}>();
 
 	constructor() {
-		const executable = resolve(projectDirectory, "blockfish");
-		if (!existsSync(executable)) {
-			throw new Error(`Blockfish executable not found at ${executable}`);
-		}
+		const executable = resolveBlockfishExecutable();
 		this.process = spawn(executable, [], { stdio: "pipe" });
 		this.process.stdout.on("data", (chunk: Buffer) => this.read(chunk));
 		this.process.stderr.on("data", (chunk: Buffer) => process.stderr.write(chunk));

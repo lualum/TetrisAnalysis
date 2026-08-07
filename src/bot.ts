@@ -104,8 +104,8 @@ export class BlockfishWrapper {
 		}
 	}
 
-	stepForward(): void {
-		void this.suggest();
+	stepForward(): Promise<void> {
+		return this.suggest();
 	}
 
 	stepBackward(): void {
