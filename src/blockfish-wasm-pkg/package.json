@@ -1,0 +1,19 @@
+{
+  "name": "blockfish-wasm",
+  "type": "module",
+  "collaborators": [
+    "iitalics <iitalics@gmail.com>",
+    "mystery <mystery#3553>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "blockfish_wasm_bg.wasm",
+    "blockfish_wasm.js",
+    "blockfish_wasm.d.ts"
+  ],
+  "main": "blockfish_wasm.js",
+  "types": "blockfish_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

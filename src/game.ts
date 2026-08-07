@@ -278,7 +278,6 @@ export class Tetris {
 		const kickKey =
 			`${orientationFrom}-${orientationTo}` as keyof typeof kickTable;
 		const kicks = kickTable[kickKey];
-		console.log(kickKey);
 		for (const kick of kicks) {
 			const x = this.current.x + kick[0];
 			const y = this.current.y - kick[1];

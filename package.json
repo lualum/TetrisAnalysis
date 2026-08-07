@@ -6,6 +6,7 @@
    "scripts": {
       "dev": "vite",
       "build": "tsc && vite build",
+      "build:blockfish-wasm": "cd ../blockfish-dev && wasm-pack build blockfish-wasm --target web --out-dir ../../TetrisAnalysis/src/blockfish-wasm-pkg && rm -f ../TetrisAnalysis/src/blockfish-wasm-pkg/.gitignore",
       "preview": "vite preview",
       "type-check": "tsc --noEmit",
       "blockfish:smoke": "node scripts/blockfish-smoke.mjs"

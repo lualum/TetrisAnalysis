@@ -16,3 +16,10 @@ npm install
 ```
 
 Use `npm run dev` to run.
+
+## Blockfish on GitHub Pages
+
+The deployed app runs the real Blockfish engine in the browser through the WASM package
+generated from `../blockfish-dev/blockfish-wasm`. Set `VITE_BLOCKFISH_ENDPOINT` at build
+time only if you want to route suggestions to a hosted Blockfish-compatible endpoint
+instead.

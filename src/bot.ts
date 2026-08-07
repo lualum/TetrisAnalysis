@@ -5,6 +5,19 @@ interface BlockfishAnalysis {
 	suggestions?: { inputs?: string[] }[];
 }
 
+interface BlockfishSnapshot {
+	hold: string;
+	next: string;
+	rows: string[];
+}
+
+interface WorkerAnalysisResponse {
+	id: number;
+	ok: boolean;
+	analysis?: string;
+	error?: string;
+}
+
 type BlockfishInput = "left" | "right" | "cw" | "ccw" | "hold" | "sd" | "hd";
 
 export interface SuggestedMino {
@@ -15,6 +28,7 @@ export interface SuggestedMino {
 }
 
 const PREVIEW_PLACEMENT_LIMIT = 5;
+const REMOTE_BLOCKFISH_ENDPOINT = import.meta.env.VITE_BLOCKFISH_ENDPOINT || "";
 
 export class BlockfishWrapper {
 	game: Tetris;
@@ -24,9 +38,18 @@ export class BlockfishWrapper {
 	private previewInputs: BlockfishInput[] = [];
 	private previewStateKey = "";
 	private previewHoldContinuationStateKey = "";
+	private endpoint: string;
+	private worker: Worker | null = null;
+	private analysisRequestId = 0;
+	private activeAnalysis: {
+		id: number;
+		stateKey: string;
+		applyOnReady: boolean;
+	} | null = null;
 
-	constructor(game: Tetris) {
+	constructor(game: Tetris, endpoint = REMOTE_BLOCKFISH_ENDPOINT) {
 		this.game = game;
+		this.endpoint = endpoint;
 	}
 
 	start(): void {
@@ -34,7 +57,7 @@ export class BlockfishWrapper {
 		this.ensurePreview();
 	}
 
-	async suggest(): Promise<void> {
+	suggest(): void {
 		if (!this.game.current) return;
 
 		this.consumePreviewHoldIfCurrent();
@@ -47,12 +70,7 @@ export class BlockfishWrapper {
 
 		if (this.waitingForSuggestion) return;
 
-		const inputs = await this.fetchInputsForCurrentState(stateKey);
-		if (inputs.length && this.getStateKey(this.game) === stateKey) {
-			this.setPreview(inputs, stateKey);
-			this.applyInputs(inputs);
-			this.ensurePreview();
-		}
+		this.requestInputsForCurrentState(stateKey, true);
 	}
 
 	ensurePreview(): void {
@@ -64,19 +82,37 @@ export class BlockfishWrapper {
 		if (this.previewStateKey === stateKey && this.previewInputs.length) return;
 
 		this.clearPreview();
-		void this.fetchInputsForCurrentState(stateKey).then((inputs) => {
-			if (this.getStateKey(this.game) !== stateKey) return;
-			this.setPreview(inputs, inputs.length ? stateKey : "");
-		});
+		this.requestInputsForCurrentState(stateKey, false);
 	}
 
-	private async fetchInputsForCurrentState(stateKey: string): Promise<BlockfishInput[]> {
+	private requestInputsForCurrentState(stateKey: string, applyOnReady: boolean): void {
 		this.waitingForSuggestion = true;
+		const id = ++this.analysisRequestId;
+		const snapshot = this.snapshotForBlockfish();
+		this.activeAnalysis = { id, stateKey, applyOnReady };
+
+		if (!this.endpoint) {
+			this.getWorker().postMessage({
+				id,
+				snapshot: JSON.stringify(snapshot),
+			});
+			return;
+		}
+
+		void this.fetchRemoteInputs(id, stateKey, snapshot, applyOnReady);
+	}
+
+	private async fetchRemoteInputs(
+		id: number,
+		stateKey: string,
+		snapshot: BlockfishSnapshot,
+		applyOnReady: boolean,
+	): Promise<void> {
 		try {
-			const response = await fetch("/__blockfish/analyze", {
+			const response = await fetch(this.endpoint, {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify(this.snapshotForBlockfish()),
+				body: JSON.stringify(snapshot),
 			});
 
 			if (!response.ok) {
@@ -84,13 +120,85 @@ export class BlockfishWrapper {
 			}
 
 			const analysis = (await response.json()) as BlockfishAnalysis;
-			if (this.getStateKey(this.game) !== stateKey) return [];
-			return this.normalizeInputs(analysis.suggestions?.[0]?.inputs ?? []);
+			this.completeAnalysis(
+				id,
+				stateKey,
+				applyOnReady,
+				this.normalizeInputs(analysis.suggestions?.[0]?.inputs ?? []),
+			);
 		} catch (error) {
 			console.error("[Blockfish]", error);
-			return [];
-		} finally {
-			this.waitingForSuggestion = false;
+			this.completeAnalysis(id, stateKey, applyOnReady, []);
+		}
+	}
+
+	private getWorker(): Worker {
+		this.worker ??= new Worker(new URL("./blockfish-worker.ts", import.meta.url), {
+			type: "module",
+		});
+		this.worker.onmessage = (event: MessageEvent<WorkerAnalysisResponse>) => {
+			const active = this.activeAnalysis;
+			if (!active || active.id !== event.data.id) return;
+			if (!event.data.ok) {
+				console.error("[Blockfish]", event.data.error);
+				this.completeAnalysis(active.id, active.stateKey, active.applyOnReady, []);
+				return;
+			}
+
+			const analysis = JSON.parse(event.data.analysis ?? "{}") as BlockfishAnalysis;
+			this.completeAnalysis(
+				active.id,
+				active.stateKey,
+				active.applyOnReady,
+				this.normalizeInputs(analysis.suggestions?.[0]?.inputs ?? []),
+			);
+		};
+		this.worker.onerror = (event) => {
+			console.error("[Blockfish]", event.message);
+			const active = this.activeAnalysis;
+			if (active) {
+				this.completeAnalysis(active.id, active.stateKey, active.applyOnReady, []);
+			}
+		};
+		return this.worker;
+	}
+
+	private completeAnalysis(
+		id: number,
+		stateKey: string,
+		applyOnReady: boolean,
+		inputs: BlockfishInput[],
+	): void {
+		if (!this.activeAnalysis || this.activeAnalysis.id !== id) return;
+		this.activeAnalysis = null;
+		this.waitingForSuggestion = false;
+
+		if (this.getStateKey(this.game) !== stateKey) {
+			return;
+		}
+
+		if (!inputs.length) {
+			this.clearPreview();
+			return;
+		}
+
+		this.setPreview(inputs, stateKey);
+		if (applyOnReady) {
+			this.applyInputs(inputs);
+			this.ensurePreview();
+		}
+	}
+
+	private cancelAnalysis(): void {
+		this.activeAnalysis = null;
+		this.waitingForSuggestion = false;
+	}
+
+	destroy(): void {
+		this.cancelAnalysis();
+		if (this.worker) {
+			this.worker.terminate();
+			this.worker = null;
 		}
 	}
 
@@ -139,11 +247,7 @@ export class BlockfishWrapper {
 		this.setPreview(this.previewInputs.slice(1), this.previewHoldContinuationStateKey);
 	}
 
-	private snapshotForBlockfish(): {
-		hold: string;
-		next: string;
-		rows: string[];
-	} {
+	private snapshotForBlockfish(): BlockfishSnapshot {
 		return {
 			hold: this.game.holdPiece ?? "",
 			next: [
@@ -291,7 +395,7 @@ export class BlockfishWrapper {
 		if (!this.isPlaying) return;
 
 		this.isPlaying = false;
-		this.waitingForSuggestion = false;
+		this.cancelAnalysis();
 
 		if (this.autoplayInterval !== null) {
 			clearInterval(this.autoplayInterval);
@@ -299,8 +403,8 @@ export class BlockfishWrapper {
 		}
 	}
 
-	stepForward(): Promise<void> {
-		return this.suggest();
+	stepForward(): void {
+		this.suggest();
 	}
 
 	stepBackward(): void {
