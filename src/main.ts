@@ -25,6 +25,7 @@ function gameLoop(): void {
 async function start(): Promise<void> {
 	setupInput();
 	await setupRenderer();
+	bot.start();
 	gameLoop();
 }
 

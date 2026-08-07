@@ -1,4 +1,4 @@
-import { game } from "./main";
+import { bot, game } from "./main";
 import { drawBoard } from "./render-board";
 import { syncCanvasLayout as measureCanvasLayout } from "./render-layout";
 import { drawHold, drawNext, drawStaticPanels, layoutStaticText } from "./render-panels";
@@ -28,10 +28,11 @@ export async function setupRenderer(): Promise<void> {
 export function render(): void {
 	const graphics = surface.graphics;
 
+	bot.ensurePreview();
 	graphics.clear();
 	drawStaticPanels(graphics, renderContext);
 	drawHold(graphics, renderContext, game);
-	drawBoard(graphics, renderContext, game);
+	drawBoard(graphics, renderContext, game, bot.getSuggestedPieces());
 	drawNext(graphics, renderContext, game);
 	layoutStaticText(surface, renderContext);
 

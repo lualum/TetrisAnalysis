@@ -3,6 +3,13 @@ import { BOARD_HEIGHT_HIDDEN, COLORS, HIGHLIGHT_COLOR, PIECES } from "./constant
 import { CellType, Orientation, Piece, PieceType } from "./game";
 import { Rect, RenderContext } from "./render-types";
 
+export interface OutlineMino {
+	type: CellType;
+	x: number;
+	y: number;
+	previewIndex?: number;
+}
+
 export function drawMinoAt(
 	graphics: Graphics,
 	context: RenderContext,
@@ -70,6 +77,110 @@ export function drawShadow(graphics: Graphics, context: RenderContext, piece: Pi
 			const x = piece.x + c;
 			const y = piece.y + r - BOARD_HEIGHT_HIDDEN;
 			drawBoardMino(graphics, context, piece.type, x, y, false, 0.8);
+		}
+	}
+}
+
+export function drawPieceOutline(
+	graphics: Graphics,
+	context: RenderContext,
+	piece: Piece,
+	alpha = 1,
+): void {
+	const { layout, tileSize } = context;
+	const data = PIECES[piece.type][piece.orientation];
+	const lineWidth = Math.max(1, tileSize * 0.08);
+	const color = COLORS[piece.type] || "#888888";
+
+	const isOccupied = (row: number, col: number): boolean =>
+		row >= 0 &&
+		row < data.length &&
+		col >= 0 &&
+		col < data[row].length &&
+		data[row][col] === 1;
+
+	for (let r = 0; r < data.length; r++) {
+		for (let c = 0; c < data[r].length; c++) {
+			if (!data[r][c]) continue;
+
+			const left = layout.board.x + (piece.x + c) * tileSize;
+			const top = layout.board.y + (piece.y + r - BOARD_HEIGHT_HIDDEN) * tileSize;
+			const right = left + tileSize;
+			const bottom = top + tileSize;
+
+			if (!isOccupied(r - 1, c)) {
+				graphics
+					.moveTo(left, top)
+					.lineTo(right, top)
+					.stroke({ color, width: lineWidth, alpha });
+			}
+			if (!isOccupied(r, c + 1)) {
+				graphics
+					.moveTo(right, top)
+					.lineTo(right, bottom)
+					.stroke({ color, width: lineWidth, alpha });
+			}
+			if (!isOccupied(r + 1, c)) {
+				graphics
+					.moveTo(left, bottom)
+					.lineTo(right, bottom)
+					.stroke({ color, width: lineWidth, alpha });
+			}
+			if (!isOccupied(r, c - 1)) {
+				graphics
+					.moveTo(left, top)
+					.lineTo(left, bottom)
+					.stroke({ color, width: lineWidth, alpha });
+			}
+		}
+	}
+}
+
+export function drawMinoOutlines(
+	graphics: Graphics,
+	context: RenderContext,
+	minos: OutlineMino[],
+	alphaForMino: (mino: OutlineMino) => number = () => 1,
+): void {
+	const { layout, tileSize } = context;
+	const lineWidth = Math.max(1, tileSize * 0.08);
+	const minoKeys = new Set(
+		minos.map((mino) => `${mino.previewIndex ?? ""}:${mino.x}:${mino.y}`),
+	);
+	const hasNeighbor = (mino: OutlineMino, dx: number, dy: number): boolean =>
+		minoKeys.has(`${mino.previewIndex ?? ""}:${mino.x + dx}:${mino.y + dy}`);
+
+	for (const mino of minos) {
+		const left = layout.board.x + mino.x * tileSize;
+		const top = layout.board.y + (mino.y - BOARD_HEIGHT_HIDDEN) * tileSize;
+		const right = left + tileSize;
+		const bottom = top + tileSize;
+		const color = COLORS[mino.type] || "#888888";
+		const alpha = alphaForMino(mino);
+
+		if (!hasNeighbor(mino, 0, -1)) {
+			graphics
+				.moveTo(left, top)
+				.lineTo(right, top)
+				.stroke({ color, width: lineWidth, alpha });
+		}
+		if (!hasNeighbor(mino, 1, 0)) {
+			graphics
+				.moveTo(right, top)
+				.lineTo(right, bottom)
+				.stroke({ color, width: lineWidth, alpha });
+		}
+		if (!hasNeighbor(mino, 0, 1)) {
+			graphics
+				.moveTo(left, bottom)
+				.lineTo(right, bottom)
+				.stroke({ color, width: lineWidth, alpha });
+		}
+		if (!hasNeighbor(mino, -1, 0)) {
+			graphics
+				.moveTo(left, top)
+				.lineTo(left, bottom)
+				.stroke({ color, width: lineWidth, alpha });
 		}
 	}
 }

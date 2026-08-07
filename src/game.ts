@@ -61,6 +61,17 @@ export class Tetris {
 		this.reset();
 	}
 
+	clone(): Tetris {
+		const clone = Object.create(Tetris.prototype) as Tetris;
+		clone.board = this.board.map((row) => [...row]);
+		clone.current = this.current ? { ...this.current } : null;
+		clone.next = [...this.next];
+		clone.holdPiece = this.holdPiece;
+		clone.history = [];
+		clone.future = [];
+		return clone;
+	}
+
 	reset(): void {
 		this.board = Array(BOARD_HEIGHT)
 			.fill(null)
@@ -211,6 +222,11 @@ export class Tetris {
 		return true;
 	}
 
+	resetCurrentToSpawn(): boolean {
+		if (!this.current) return false;
+		return this.spawnPiece(this.current.type);
+	}
+
 	inBounds(x: number, y: number): boolean {
 		return x >= 0 && y >= 0 && x < BOARD_WIDTH && y < BOARD_HEIGHT;
 	}
@@ -280,10 +296,11 @@ export class Tetris {
 		return false;
 	}
 
-	hardDrop(): void {
+	hardDrop(addCheese = true): number[] {
 		while (this.move(0, 1)) {}
-		this.place();
+		const clearedRows = this.place(addCheese);
 		this.save();
+		return clearedRows;
 	}
 
 	sonicDrop(): boolean {
@@ -294,8 +311,8 @@ export class Tetris {
 		return moved;
 	}
 
-	place(): void {
-		if (!this.current) return;
+	place(addCheese = true): number[] {
+		if (!this.current) return [];
 		const data = PIECES[this.current.type][this.current.orientation];
 		for (let r = 0; r < data.length; r++) {
 			for (let c = 0; c < data[r].length; c++) {
@@ -305,26 +322,27 @@ export class Tetris {
 				this.board[y][x] = this.current.type;
 			}
 		}
-		const clearedLines = this.clearLines();
-		if (clearedLines === 0) {
+		const clearedRows = this.clearLines();
+		if (clearedRows.length === 0 && addCheese) {
 			this.addCheeseGarbage();
 		}
 		this.spawnPiece();
+		return clearedRows;
 	}
 
-	clearLines(): number {
-		let clearedLines = 0;
+	clearLines(): number[] {
+		const clearedRows: number[] = [];
 
 		for (let r = BOARD_HEIGHT - 1; r >= 0; r--) {
 			if (this.board[r].every((cell) => cell !== null)) {
+				clearedRows.push(r);
 				this.board.splice(r, 1);
 				this.board.unshift(Array(BOARD_WIDTH).fill(null));
-				clearedLines++;
 				r++;
 			}
 		}
 
-		return clearedLines;
+		return clearedRows;
 	}
 
 	hold(): void {

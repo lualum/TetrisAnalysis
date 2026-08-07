@@ -1,8 +1,9 @@
 import { Graphics } from "pixi.js";
+import type { SuggestedMino } from "./bot";
 import { BOARD_HEIGHT_HIDDEN, BOARD_HEIGHT_VISIBLE, BOARD_WIDTH } from "./constants";
 import { Tetris } from "./game";
 import { getCssColor } from "./render-layout";
-import { drawBoardMino, drawPiece, drawShadow } from "./render-minos";
+import { drawBoardMino, drawMinoOutlines, drawPiece, drawShadow } from "./render-minos";
 import { RenderContext } from "./render-types";
 
 const GRID_LINE_TILE_RATIO = 0.05;
@@ -57,7 +58,12 @@ function drawBoardFrame(graphics: Graphics, context: RenderContext): void {
 		.fill(outlineColor);
 }
 
-export function drawBoard(graphics: Graphics, context: RenderContext, game: Tetris): void {
+export function drawBoard(
+	graphics: Graphics,
+	context: RenderContext,
+	game: Tetris,
+	suggestedPieces: SuggestedMino[] = [],
+): void {
 	const { layout } = context;
 	const boardColor = getCssColor("--color-board");
 
@@ -83,6 +89,10 @@ export function drawBoard(graphics: Graphics, context: RenderContext, game: Tetr
 			}
 		}
 	}
+
+	drawMinoOutlines(graphics, context, suggestedPieces, (mino) =>
+		Math.max(0.25, 0.85 - (mino.previewIndex ?? 0) * 0.12),
+	);
 
 	if (game.current) {
 		const ghost = game.getGhost();
