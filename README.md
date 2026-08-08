@@ -4,6 +4,8 @@ Access Here: https://lualum.github.io/TetrisAnalysis/
 
 A modern **Tetris gameplay analysis engine** inspired by chess engines and post-game chess analysis tools.
 
+This project is not affiliated with, endorsed by, sponsored by, or presented as an official TETR.IO project. The current UI does emulate TETR.IO's interface in places, but this project is intended to be a separate analysis tool and should move away from TETR.IO's protected branding, artwork, wording, and distinctive UI presentation.
+
 This project uses modern guideline Tetris mechanics — including **Super Rotation System (SRS)** and configurable **DAS/ARR handling**.
 The app runs the real **Blockfish** engine in the browser through the bundled WASM package.
 
@@ -42,20 +44,3 @@ At a high level:
 The middleware boundary should stay data-oriented. Keep rendering, controls, and visual
 state out of the analysis request path; the worker or remote endpoint should only need a
 serializable game snapshot and should return analysis data.
-
-## UI Independence Guardrails
-
-This project must not mirror TETR.IO's UI. TETR.IO can be useful as a point of comparison
-for gameplay concepts, but it should not be used as a visual template.
-
-Design rules for future UI work:
-
-- Do not copy TETR.IO layouts, menus, panels, typography, color treatments, animations,
-  wording, icons, or interaction details.
-- Keep CCAnalysis visually distinct: analysis-first, compact, utilitarian, and clearly
-  branded as its own tool.
-- Prefer original labels and control groupings that describe this app's analysis workflow
-  instead of reproducing TETR.IO screen language.
-- If a feature overlaps with common Tetris UX, implement only the generic function and
-  choose independent styling.
-- When in doubt, document the reason a UI choice is generic or original before merging it.
