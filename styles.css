@@ -1,6 +1,9 @@
 :root {
-	--tile-width: min(calc(100vw / 20.4), calc((100vh * 2 / 3) / 20.2));
+	--container-height: 65vh;
+	--container-width: calc(var(--container-height) * 20.4 / 20.1);
+	--tile-width: calc(var(--container-height) / 20.1);
 	--border-width: calc(var(--tile-width) / 10);
+	--canvas-height: calc(var(--container-width) * 40.1 / 20.4);
 
 	--opacity: 0.8;
 	--blur: 6px;
@@ -39,8 +42,8 @@ body {
 
 .container {
 	position: relative;
-	height: calc(20 * var(--tile-width) + var(--border-width));
-	width: calc(20 * var(--tile-width) + 2 * var(--border-width));
+	height: var(--container-height);
+	width: var(--container-width);
 }
 
 .app-loading .container {
@@ -53,6 +56,6 @@ body {
 	position: absolute;
 	top: calc(-20 * var(--tile-width));
 	left: 0;
-	width: 100%;
-	height: calc(40 * var(--tile-width) + var(--border-width));
+	width: var(--container-width);
+	height: var(--canvas-height);
 }

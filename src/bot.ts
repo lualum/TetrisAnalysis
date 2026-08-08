@@ -2,29 +2,53 @@ import { BOARD_HEIGHT, NEXT_SIZE, PIECES } from "./constants";
 import { type CellType, type Piece, Tetris } from "./game";
 
 interface BlockfishAnalysis {
-	suggestions?: { inputs?: string[] }[];
+	suggestions?: BlockfishSuggestion[];
 }
 
 interface BlockfishSnapshot {
 	hold: string;
 	next: string;
 	rows: string[];
+	node_limit?: number;
+	suggestion_limit?: number;
+	placement_limit?: number;
+	evaluation_placement_limit?: number;
 }
 
 interface WorkerAnalysisResponse {
 	id: number;
 	ok: boolean;
 	analysis?: string;
+	evaluation?: string;
 	error?: string;
 }
 
 type BlockfishInput = "left" | "right" | "cw" | "ccw" | "hold" | "sd" | "hd";
+type AnalysisTarget = "current" | "previous" | "previous-evaluation";
+export type PlacementAnnotation =
+	| "best"
+	| "excellent"
+	| "good"
+	| "inaccuracy"
+	| "mistake"
+	| "blunder";
+
+interface BlockfishSuggestion {
+	rating?: number;
+	evaluation?: number;
+	inputs?: string[];
+}
 
 export interface SuggestedMino {
 	type: CellType;
 	x: number;
 	y: number;
 	previewIndex: number;
+}
+
+export interface PlacementPreview {
+	game: Tetris;
+	suggestedPieces: SuggestedMino[];
 }
 
 const PREVIEW_PLACEMENT_LIMIT = 5;
@@ -38,6 +62,9 @@ export class BlockfishWrapper {
 	private previewInputs: BlockfishInput[] = [];
 	private previewStateKey = "";
 	private previewHoldContinuationStateKey = "";
+	private previousPreviewInputs: BlockfishInput[] = [];
+	private previousPreviewStateKey = "";
+	private previousPlacementAnnotation: PlacementAnnotation | null = null;
 	private endpoint: string;
 	private worker: Worker | null = null;
 	private analysisRequestId = 0;
@@ -45,6 +72,8 @@ export class BlockfishWrapper {
 		id: number;
 		stateKey: string;
 		applyOnReady: boolean;
+		target: AnalysisTarget;
+		topRating?: number;
 	} | null = null;
 
 	constructor(game: Tetris, endpoint = REMOTE_BLOCKFISH_ENDPOINT) {
@@ -54,7 +83,8 @@ export class BlockfishWrapper {
 
 	start(): void {
 		this.clearPreview();
-		this.ensurePreview();
+		this.clearPreviousPreview();
+		this.ensurePreviousPreview();
 	}
 
 	suggest(): void {
@@ -70,7 +100,7 @@ export class BlockfishWrapper {
 
 		if (this.waitingForSuggestion) return;
 
-		this.requestInputsForCurrentState(stateKey, true);
+		this.requestInputsForGame(this.game, stateKey, true, "current");
 	}
 
 	ensurePreview(): void {
@@ -82,14 +112,64 @@ export class BlockfishWrapper {
 		if (this.previewStateKey === stateKey && this.previewInputs.length) return;
 
 		this.clearPreview();
-		this.requestInputsForCurrentState(stateKey, false);
+		this.requestInputsForGame(this.game, stateKey, false, "current");
 	}
 
-	private requestInputsForCurrentState(stateKey: string, applyOnReady: boolean): void {
-		this.waitingForSuggestion = true;
+	ensurePreviousPreview(): void {
+		const previewGame = this.getPreviousMoveGame();
+		if (!previewGame?.current) {
+			this.clearPreviousPreview();
+			return;
+		}
+
+		const stateKey = this.getStateKey(previewGame);
+		if (this.previousPreviewStateKey === stateKey && this.previousPreviewInputs.length) return;
+		if (this.activeAnalysis) return;
+
+		this.clearPreviousPreview();
+		this.requestInputsForGame(previewGame, stateKey, false, "previous");
+	}
+
+	getPlacementPreview(): PlacementPreview | null {
+		this.ensurePreviousPreview();
+		const previewGame = this.getPreviousMoveGame();
+		if (!previewGame?.current) return null;
+
+		const stateKey = this.getStateKey(previewGame);
+		if (this.previousPreviewStateKey !== stateKey || !this.previousPreviewInputs.length) {
+			return { game: previewGame, suggestedPieces: [] };
+		}
+
+		const suggestionGame = previewGame.clone();
+		if (!suggestionGame.resetCurrentToSpawn()) {
+			return { game: previewGame, suggestedPieces: [] };
+		}
+
+		return {
+			game: previewGame,
+			suggestedPieces: this.collectSuggestedPieces(
+				suggestionGame,
+				this.previousPreviewInputs,
+			),
+		};
+	}
+
+	private requestInputsForGame(
+		game: Tetris,
+		stateKey: string,
+		applyOnReady: boolean,
+		target: AnalysisTarget,
+	): void {
+		if (target === "current") {
+			this.cancelAnalysis();
+			this.waitingForSuggestion = true;
+		}
 		const id = ++this.analysisRequestId;
-		const snapshot = this.snapshotForBlockfish();
-		this.activeAnalysis = { id, stateKey, applyOnReady };
+		const snapshot =
+			target === "previous"
+				? this.previousMoveSnapshotForBlockfish(game)
+				: this.snapshotForBlockfish(game);
+		this.activeAnalysis = { id, stateKey, applyOnReady, target };
 
 		if (!this.endpoint) {
 			this.getWorker().postMessage({
@@ -124,11 +204,18 @@ export class BlockfishWrapper {
 				id,
 				stateKey,
 				applyOnReady,
-				this.normalizeInputs(analysis.suggestions?.[0]?.inputs ?? []),
+				this.activeAnalysis?.target ?? "current",
+				analysis.suggestions ?? [],
 			);
 		} catch (error) {
 			console.error("[Blockfish]", error);
-			this.completeAnalysis(id, stateKey, applyOnReady, []);
+			this.completeAnalysis(
+				id,
+				stateKey,
+				applyOnReady,
+				this.activeAnalysis?.target ?? "current",
+				[],
+			);
 		}
 	}
 
@@ -141,7 +228,24 @@ export class BlockfishWrapper {
 			if (!active || active.id !== event.data.id) return;
 			if (!event.data.ok) {
 				console.error("[Blockfish]", event.data.error);
-				this.completeAnalysis(active.id, active.stateKey, active.applyOnReady, []);
+				if (active.target === "previous-evaluation") {
+					this.activeAnalysis = null;
+					return;
+				}
+				this.completeAnalysis(active.id, active.stateKey, active.applyOnReady, active.target, []);
+				return;
+			}
+
+			if (active.target === "previous-evaluation") {
+				const evaluation = JSON.parse(event.data.evaluation ?? "{}") as {
+					rating?: number;
+				};
+				this.completePositionEvaluation(
+					active.id,
+					active.stateKey,
+					evaluation.rating,
+					active.topRating,
+				);
 				return;
 			}
 
@@ -150,14 +254,21 @@ export class BlockfishWrapper {
 				active.id,
 				active.stateKey,
 				active.applyOnReady,
-				this.normalizeInputs(analysis.suggestions?.[0]?.inputs ?? []),
+				active.target,
+				analysis.suggestions ?? [],
 			);
 		};
 		this.worker.onerror = (event) => {
 			console.error("[Blockfish]", event.message);
 			const active = this.activeAnalysis;
 			if (active) {
-				this.completeAnalysis(active.id, active.stateKey, active.applyOnReady, []);
+				this.completeAnalysis(
+					active.id,
+					active.stateKey,
+					active.applyOnReady,
+					active.target,
+					[],
+				);
 			}
 		};
 		return this.worker;
@@ -167,16 +278,45 @@ export class BlockfishWrapper {
 		id: number,
 		stateKey: string,
 		applyOnReady: boolean,
-		inputs: BlockfishInput[],
+		target: AnalysisTarget,
+		suggestions: BlockfishSuggestion[],
 	): void {
 		if (!this.activeAnalysis || this.activeAnalysis.id !== id) return;
 		this.activeAnalysis = null;
-		this.waitingForSuggestion = false;
+		if (target === "current") {
+			this.waitingForSuggestion = false;
+		}
+
+		if (target === "previous") {
+			const previewGame = this.getPreviousMoveGame();
+			if (!previewGame || this.getStateKey(previewGame) !== stateKey || !suggestions.length) {
+				this.clearPreviousPreview();
+				return;
+			}
+
+			const topSuggestion = suggestions[0];
+			const inputs = this.normalizeInputs(topSuggestion.inputs ?? []);
+			this.previousPreviewInputs = inputs;
+			this.previousPreviewStateKey = stateKey;
+			this.previousPlacementAnnotation = this.annotationForPreviousMove(
+				previewGame,
+				suggestions,
+			);
+			if (this.previousPlacementAnnotation === null && typeof topSuggestion.rating === "number") {
+				this.requestPositionEvaluationForPreviousMove(
+					previewGame,
+					stateKey,
+					topSuggestion.rating,
+				);
+			}
+			return;
+		}
 
 		if (this.getStateKey(this.game) !== stateKey) {
 			return;
 		}
 
+		const inputs = this.normalizeInputs(suggestions[0]?.inputs ?? []);
 		if (!inputs.length) {
 			this.clearPreview();
 			return;
@@ -192,6 +332,55 @@ export class BlockfishWrapper {
 	private cancelAnalysis(): void {
 		this.activeAnalysis = null;
 		this.waitingForSuggestion = false;
+	}
+
+	private requestPositionEvaluationForPreviousMove(
+		game: Tetris,
+		stateKey: string,
+		topRating: number,
+	): void {
+		const positionRows = this.getActualPlacementRows(game);
+		if (!positionRows) return;
+
+		const id = ++this.analysisRequestId;
+		this.activeAnalysis = {
+			id,
+			stateKey,
+			applyOnReady: false,
+			target: "previous-evaluation",
+			topRating,
+		};
+		this.getWorker().postMessage({
+			id,
+			kind: "evaluate-position",
+			snapshot: JSON.stringify({
+				...this.snapshotForBlockfish(game),
+				position_rows: positionRows,
+			}),
+		});
+	}
+
+	private completePositionEvaluation(
+		id: number,
+		stateKey: string,
+		rating?: number,
+		topRating?: number,
+	): void {
+		if (!this.activeAnalysis || this.activeAnalysis.id !== id) return;
+		this.activeAnalysis = null;
+		const previewGame = this.getPreviousMoveGame();
+		if (
+			!previewGame ||
+			this.getStateKey(previewGame) !== stateKey ||
+			typeof rating !== "number" ||
+			typeof topRating !== "number"
+		) {
+			return;
+		}
+
+		this.previousPlacementAnnotation = this.annotationForEvaluation(
+			Math.max(0, rating - topRating),
+		);
 	}
 
 	destroy(): void {
@@ -221,6 +410,27 @@ export class BlockfishWrapper {
 		this.previewHoldContinuationStateKey = "";
 	}
 
+	private clearPreviousPreview(): void {
+		this.previousPreviewInputs = [];
+		this.previousPreviewStateKey = "";
+		this.previousPlacementAnnotation = null;
+	}
+
+	getPlacementAnnotation(): PlacementAnnotation | null {
+		this.ensurePreviousPreview();
+		return this.previousPlacementAnnotation;
+	}
+
+	shouldShowPlacementPreview(): boolean {
+		const annotation = this.getPlacementAnnotation();
+		return (
+			annotation === "good" ||
+			annotation === "inaccuracy" ||
+			annotation === "mistake" ||
+			annotation === "blunder"
+		);
+	}
+
 	private setPreview(inputs: BlockfishInput[], stateKey: string): void {
 		this.previewInputs = inputs;
 		this.previewStateKey = stateKey;
@@ -247,16 +457,28 @@ export class BlockfishWrapper {
 		this.setPreview(this.previewInputs.slice(1), this.previewHoldContinuationStateKey);
 	}
 
-	private snapshotForBlockfish(): BlockfishSnapshot {
+	private getPreviousMoveGame(): Tetris | null {
+		const previewGame = this.game.clone();
+		return previewGame.undo() ? previewGame : null;
+	}
+
+	private snapshotForBlockfish(game: Tetris): BlockfishSnapshot {
 		return {
-			hold: this.game.holdPiece ?? "",
+			hold: game.holdPiece ?? "",
 			next: [
-				this.game.current?.type ?? "",
-				...this.game.next.slice(0, NEXT_SIZE),
+				game.current?.type ?? "",
+				...game.next.slice(0, NEXT_SIZE),
 			].join(""),
-			rows: this.game.board.map((row) =>
+			rows: game.board.map((row) =>
 				row.map((cell) => cell ?? ".").join(""),
 			),
+		};
+	}
+
+	private previousMoveSnapshotForBlockfish(game: Tetris): BlockfishSnapshot {
+		return {
+			...this.snapshotForBlockfish(game),
+			suggestion_limit: 256,
 		};
 	}
 
@@ -277,6 +499,95 @@ export class BlockfishWrapper {
 		return inputs.filter((input): input is BlockfishInput =>
 			["left", "right", "cw", "ccw", "hold", "sd", "hd"].includes(input),
 		);
+	}
+
+	private annotationForPreviousMove(
+		previewGame: Tetris,
+		suggestions: BlockfishSuggestion[],
+	): PlacementAnnotation | null {
+		const actualPlacement = this.game.lastPlacement;
+		if (!actualPlacement) return null;
+
+		const topRating = suggestions[0]?.rating;
+		for (const suggestion of suggestions) {
+			const inputs = this.normalizeInputs(suggestion.inputs ?? []);
+			if (!inputs.length) continue;
+
+			const suggestedPlacement = this.getFirstSuggestedPlacement(previewGame, inputs);
+			if (!suggestedPlacement || !this.samePlacement(suggestedPlacement, actualPlacement)) {
+				continue;
+			}
+
+			const evaluation =
+				suggestion.evaluation ??
+				(typeof suggestion.rating === "number" && typeof topRating === "number"
+					? suggestion.rating - topRating
+					: null);
+			return typeof evaluation === "number"
+				? this.annotationForEvaluation(evaluation)
+				: null;
+		}
+
+		return null;
+	}
+
+	private getActualPlacementRows(game: Tetris): string[] | null {
+		const actualPlacement = this.game.lastPlacement;
+		if (!actualPlacement) return null;
+
+		const evaluationGame = game.clone();
+		evaluationGame.current = { ...actualPlacement };
+		evaluationGame.place(false);
+		return evaluationGame.board.map((row) =>
+			row.map((cell) => cell ?? ".").join(""),
+		);
+	}
+
+	private getFirstSuggestedPlacement(
+		game: Tetris,
+		inputs: BlockfishInput[],
+	): Piece | null {
+		const suggestionGame = game.clone();
+		if (!suggestionGame.resetCurrentToSpawn()) return null;
+
+		for (const input of inputs) {
+			if (!suggestionGame.current) return null;
+			if (input === "hd") return suggestionGame.getGhost();
+			this.applyInput(suggestionGame, input);
+		}
+
+		return null;
+	}
+
+	private samePlacement(lhs: Piece, rhs: Piece): boolean {
+		if (lhs.type !== rhs.type) return false;
+
+		const lhsCells = this.getPlacementCells(lhs);
+		const rhsCells = new Set(this.getPlacementCells(rhs));
+		return lhsCells.length === rhsCells.size &&
+			lhsCells.every((cell) => rhsCells.has(cell));
+	}
+
+	private getPlacementCells(piece: Piece): string[] {
+		const data = PIECES[piece.type][piece.orientation];
+		const cells: string[] = [];
+
+		for (let row = 0; row < data.length; row++) {
+			for (let col = 0; col < data[row].length; col++) {
+				if (data[row][col]) cells.push(`${piece.x + col}:${piece.y + row}`);
+			}
+		}
+
+		return cells;
+	}
+
+	private annotationForEvaluation(evaluation: number): PlacementAnnotation {
+		if (evaluation <= 0) return "best";
+		if (evaluation <= 5) return "excellent";
+		if (evaluation <= 10) return "good";
+		if (evaluation <= 20) return "inaccuracy";
+		if (evaluation <= 40) return "mistake";
+		return "blunder";
 	}
 
 	private collectSuggestedPieces(game: Tetris, inputs: BlockfishInput[]): SuggestedMino[] {

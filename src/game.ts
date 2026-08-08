@@ -47,6 +47,7 @@ export interface Snapshot {
 	current: PieceType | null;
 	next: PieceType[];
 	holdPiece: PieceType | null;
+	lastPlacement: Piece | null;
 }
 
 export class Tetris {
@@ -54,6 +55,7 @@ export class Tetris {
 	current!: Piece | null;
 	next: PieceType[] = [];
 	holdPiece!: PieceType | null;
+	lastPlacement: Piece | null = null;
 	history: Snapshot[] = [];
 	future: Snapshot[] = [];
 
@@ -67,8 +69,21 @@ export class Tetris {
 		clone.current = this.current ? { ...this.current } : null;
 		clone.next = [...this.next];
 		clone.holdPiece = this.holdPiece;
-		clone.history = [];
-		clone.future = [];
+		clone.lastPlacement = this.lastPlacement ? { ...this.lastPlacement } : null;
+		clone.history = this.history.map((snap) => ({
+			board: snap.board.map((row) => [...row]),
+			current: snap.current,
+			next: [...snap.next],
+			holdPiece: snap.holdPiece,
+			lastPlacement: snap.lastPlacement ? { ...snap.lastPlacement } : null,
+		}));
+		clone.future = this.future.map((snap) => ({
+			board: snap.board.map((row) => [...row]),
+			current: snap.current,
+			next: [...snap.next],
+			holdPiece: snap.holdPiece,
+			lastPlacement: snap.lastPlacement ? { ...snap.lastPlacement } : null,
+		}));
 		return clone;
 	}
 
@@ -79,6 +94,7 @@ export class Tetris {
 		this.addCheeseGarbage();
 		this.current = null;
 		this.holdPiece = null;
+		this.lastPlacement = null;
 		this.next = [];
 		this.history = [];
 		this.future = [];
@@ -150,6 +166,7 @@ export class Tetris {
 			current: this.current ? this.current.type : null,
 			next: [...this.next],
 			holdPiece: this.holdPiece,
+			lastPlacement: this.lastPlacement ? { ...this.lastPlacement } : null,
 		};
 	}
 
@@ -157,6 +174,7 @@ export class Tetris {
 		this.board = snap.board.map((row) => [...row]);
 		this.next = [...snap.next];
 		this.holdPiece = snap.holdPiece;
+		this.lastPlacement = snap.lastPlacement ? { ...snap.lastPlacement } : null;
 		this.current = null;
 		if (snap.current) {
 			this.spawnPiece(snap.current);
@@ -312,6 +330,7 @@ export class Tetris {
 
 	place(addCheese = true): number[] {
 		if (!this.current) return [];
+		this.lastPlacement = { ...this.current };
 		const data = PIECES[this.current.type][this.current.orientation];
 		for (let r = 0; r < data.length; r++) {
 			for (let c = 0; c < data[r].length; c++) {

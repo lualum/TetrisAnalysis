@@ -1,7 +1,13 @@
 import { bot, game } from "./main";
 import { drawBoard } from "./render-board";
 import { syncCanvasLayout as measureCanvasLayout } from "./render-layout";
-import { drawHold, drawNext, drawStaticPanels, layoutStaticText } from "./render-panels";
+import {
+	drawHold,
+	drawNext,
+	drawStaticPanels,
+	layoutPlacementAnnotations,
+	layoutStaticText,
+} from "./render-panels";
 import { createSurface } from "./render-surface";
 import { PixiSurface, RenderContext } from "./render-types";
 
@@ -11,6 +17,17 @@ let resizeListenerAttached = false;
 
 function syncCanvasLayout(): void {
 	renderContext = measureCanvasLayout(surface);
+}
+
+function getPlacementPreviewContext(): RenderContext {
+	return {
+		layout: {
+			...renderContext.layout,
+			board: renderContext.layout.placementPreview,
+		},
+		tileSize: renderContext.tileSize / 2,
+		borderWidth: renderContext.borderWidth,
+	};
 }
 
 export async function setupRenderer(): Promise<void> {
@@ -27,12 +44,30 @@ export async function setupRenderer(): Promise<void> {
 
 export function render(): void {
 	const graphics = surface.graphics;
+	const placementAnnotation = bot.getPlacementAnnotation();
+	const placementPreview = bot.shouldShowPlacementPreview()
+		? bot.getPlacementPreview()
+		: null;
 
-	bot.ensurePreview();
 	graphics.clear();
 	drawStaticPanels(graphics, renderContext);
 	drawHold(graphics, renderContext, game);
-	drawBoard(graphics, renderContext, game, bot.getSuggestedPieces());
+	drawBoard(graphics, renderContext, game, [], { frameEdges: { top: false } });
+	layoutPlacementAnnotations(surface, renderContext, placementAnnotation);
+	if (placementPreview) {
+		drawBoard(
+			graphics,
+			getPlacementPreviewContext(),
+			placementPreview.game,
+			placementPreview.suggestedPieces,
+			{
+				showCurrent: false,
+				showGrid: false,
+				fillFirstSuggestedPiece: true,
+				suggestedOutlineWidthScale: 1.35,
+			},
+		);
+	}
 	drawNext(graphics, renderContext, game);
 	layoutStaticText(surface, renderContext);
 

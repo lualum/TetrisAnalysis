@@ -3,13 +3,9 @@ import { CHEESE_RACE_GARBAGE_LINES, CHEESE_RACE_MESSINESS } from "./constants";
 import { Tetris } from "./game";
 import { getCssColor } from "./render-layout";
 import { drawSidePanelPiece } from "./render-minos";
+import { getAnnotationTextureUrl } from "./render-surface";
 import { PixiSurface, Rect, RenderContext } from "./render-types";
-
-function drawPanel(graphics: Graphics, rect: Rect): void {
-	const boardColor = getCssColor("--color-board");
-
-	graphics.rect(rect.x, rect.y, rect.width, rect.height).fill(boardColor);
-}
+import { type PlacementAnnotation } from "./bot";
 
 function drawHeader(graphics: Graphics, rect: Rect): void {
 	const outlineColor = getCssColor("--color-outline");
@@ -91,31 +87,48 @@ function layoutCheeseText(surface: PixiSurface, context: RenderContext): void {
 export function drawStaticPanels(graphics: Graphics, context: RenderContext): void {
 	const { layout } = context;
 	drawHeader(graphics, layout.holdHeader);
-	drawHeader(graphics, layout.scoreHeader);
-	drawHeader(graphics, layout.statsHeader);
 	drawHeader(graphics, layout.nextHeader);
-	drawPanel(graphics, layout.score);
-	drawPanel(graphics, layout.stats);
 }
 
 export function layoutStaticText(surface: PixiSurface, context: RenderContext): void {
 	const { layout } = context;
-	const textColor = getCssColor("--color-text-primary");
 	const headerColor = getCssColor("--color-text-outline");
 
 	layoutLabel(surface.labels.holdHeader, context, "HOLD", layout.holdHeader, headerColor);
-	layoutLabel(
-		surface.labels.scoreHeader,
-		context,
-		"SCORE",
-		layout.scoreHeader,
-		headerColor,
-	);
-	layoutLabel(surface.labels.scoreValue, context, "(5x3)", layout.score, textColor);
-	layoutLabel(surface.labels.statsHeader, context, "STATS", layout.statsHeader, headerColor);
-	layoutLabel(surface.labels.statsValue, context, "(5x8)", layout.stats, textColor);
 	layoutLabel(surface.labels.nextHeader, context, "NEXT", layout.nextHeader, headerColor);
 	layoutCheeseText(surface, context);
+}
+
+export function layoutPlacementAnnotations(
+	surface: PixiSurface,
+	context: RenderContext,
+	annotation: PlacementAnnotation | null,
+): void {
+	const { layout, tileSize } = context;
+	const iconSize = tileSize * 3.6;
+
+	surface.annotationContainer.visible = annotation !== null;
+	if (!annotation) return;
+
+	for (let i = 0; i < surface.annotationSprites.length; i++) {
+		const sprite = surface.annotationSprites[i];
+
+		if (i > 0) {
+			sprite.visible = false;
+			continue;
+		}
+
+		sprite.texture = surface.annotationTextures[getAnnotationTextureUrl(annotation)];
+		const textureWidth = sprite.texture.width || iconSize;
+		const textureHeight = sprite.texture.height || iconSize;
+		const scale = iconSize / Math.max(textureWidth, textureHeight);
+		sprite.visible = true;
+		sprite.scale.set(scale);
+		sprite.position.set(
+			layout.placementAnnotations.x + layout.placementAnnotations.width / 2,
+			layout.placementAnnotations.y + layout.placementAnnotations.height / 2,
+		);
+	}
 }
 
 function drawClippedPanel(
@@ -182,17 +195,36 @@ function drawClippedPanel(
 }
 
 export function drawHold(graphics: Graphics, context: RenderContext, game: Tetris): void {
-	const { layout } = context;
+	const { layout, borderWidth } = context;
 	drawClippedPanel(graphics, context, layout.hold, "bottom-left");
 
 	if (game.holdPiece) {
-		drawSidePanelPiece(graphics, context, layout.hold, game.holdPiece);
+		drawSidePanelPiece(
+			graphics,
+			context,
+			{
+				...layout.hold,
+				x: layout.hold.x + borderWidth,
+				width: layout.hold.width - borderWidth,
+			},
+			game.holdPiece,
+		);
 	}
 }
 
 export function drawNext(graphics: Graphics, context: RenderContext, game: Tetris): void {
-	const { layout } = context;
+	const { layout, tileSize, borderWidth } = context;
+	const outlineColor = getCssColor("--color-outline");
+	const cornerSize = tileSize / 2;
 	drawClippedPanel(graphics, context, layout.next, "bottom-right");
+	graphics
+		.rect(
+			layout.next.x + layout.next.width,
+			layout.nextHeader.y,
+			borderWidth,
+			layout.next.y + layout.next.height - cornerSize - layout.nextHeader.y,
+		)
+		.fill(outlineColor);
 
 	const nextSize = 5;
 	const slotHeight = layout.next.height / nextSize;

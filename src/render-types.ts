@@ -1,11 +1,7 @@
-import { Application, Graphics, Text } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Text } from "pixi.js";
 
 export type LabelKey =
 	| "holdHeader"
-	| "scoreHeader"
-	| "scoreValue"
-	| "statsHeader"
-	| "statsValue"
 	| "nextHeader"
 	| "garbageSettingsHeader"
 	| "garbageSettingsValue"
@@ -16,6 +12,9 @@ export interface PixiSurface {
 	app: Application;
 	canvas: HTMLCanvasElement;
 	graphics: Graphics;
+	annotationContainer: Container;
+	annotationSprites: Sprite[];
+	annotationTextures: Record<string, Sprite["texture"]>;
 	labels: Record<LabelKey, Text>;
 }
 
@@ -32,10 +31,8 @@ export interface Layout {
 	hold: Rect;
 	next: Rect;
 	holdHeader: Rect;
-	scoreHeader: Rect;
-	score: Rect;
-	statsHeader: Rect;
-	stats: Rect;
+	placementAnnotations: Rect;
+	placementPreview: Rect;
 	nextHeader: Rect;
 	cheeseSettings: Rect;
 }

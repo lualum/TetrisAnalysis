@@ -223,9 +223,10 @@ export function drawMinoOutlines(
 	context: RenderContext,
 	minos: OutlineMino[],
 	alphaForMino: (mino: OutlineMino) => number = () => 1,
+	lineWidthScale = 1,
 ): void {
 	const { layout, tileSize } = context;
-	const lineWidth = Math.max(1, tileSize * 0.08);
+	const lineWidth = Math.max(1, tileSize * 0.08 * lineWidthScale);
 	const groups = new Map<string, OutlineGroup>();
 
 	for (const mino of minos) {

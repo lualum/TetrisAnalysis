@@ -6,6 +6,10 @@ import {
 } from "./constants";
 import { Layout, PixiSurface, RenderMetrics } from "./render-types";
 
+const BORDER_TILE_RATIO = 0.1;
+const SIDE_PANEL_TILE_WIDTH = 5;
+const CONTAINER_WIDTH_TILE_UNITS = BOARD_WIDTH + SIDE_PANEL_TILE_WIDTH * 2 + BORDER_TILE_RATIO * 4;
+
 export function getCssColor(name: string): string {
 	return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -23,10 +27,13 @@ function measureLayout(tileSize: number, borderWidth: number): Layout {
 	const boardHeight = BOARD_HEIGHT_VISIBLE * tileSize;
 	const canvasHeight = BOARD_HEIGHT * tileSize + borderWidth;
 	const boardY = BOARD_HEIGHT_HIDDEN * tileSize;
-	const boardX = leftWidth + borderWidth;
-	const rightX = leftWidth + boardWidth + borderWidth * 2;
+	const leftPadding = borderWidth;
+	const boardX = leftPadding + leftWidth + borderWidth;
+	const rightX = leftPadding + leftWidth + boardWidth + borderWidth * 2;
 	const headerHeight = tileSize;
 	const sidePanelWidth = 5 * tileSize;
+	const leftColumnX = 0;
+	const leftColumnWidth = sidePanelWidth + borderWidth;
 
 	return {
 		container: {
@@ -42,40 +49,28 @@ function measureLayout(tileSize: number, borderWidth: number): Layout {
 			height: boardHeight,
 		},
 		holdHeader: {
-			x: 0,
+			x: leftColumnX,
 			y: boardY,
-			width: sidePanelWidth,
+			width: leftColumnWidth,
 			height: headerHeight,
 		},
 		hold: {
-			x: 0,
+			x: leftColumnX,
 			y: boardY + headerHeight,
-			width: sidePanelWidth,
+			width: leftColumnWidth,
 			height: 3 * tileSize,
 		},
-		scoreHeader: {
-			x: 0,
-			y: boardY + 5 * tileSize,
-			width: sidePanelWidth,
-			height: headerHeight,
-		},
-		score: {
-			x: 0,
-			y: boardY + 6 * tileSize,
-			width: sidePanelWidth,
-			height: 3 * tileSize,
-		},
-		statsHeader: {
-			x: 0,
+		placementPreview: {
+			x: leftColumnX + borderWidth,
 			y: boardY + 10 * tileSize,
 			width: sidePanelWidth,
-			height: headerHeight,
+			height: 10 * tileSize,
 		},
-		stats: {
-			x: 0,
-			y: boardY + 11 * tileSize,
-			width: sidePanelWidth,
-			height: 9 * tileSize,
+		placementAnnotations: {
+			x: leftColumnX,
+			y: boardY + 5 * tileSize,
+			width: leftColumnWidth,
+			height: 4 * tileSize,
 		},
 		nextHeader: {
 			x: rightX,
@@ -107,8 +102,8 @@ function resizeSurface(surface: PixiSurface, width: number, height: number): voi
 export function syncCanvasLayout(surface: PixiSurface): RenderMetrics & { layout: Layout } {
 	const containerElement = document.querySelector(".container") as HTMLElement;
 	const containerRect = containerElement.getBoundingClientRect();
-	const tileSize = readCssPixel("--tile-width") || containerRect.width / 20.2;
-	const borderWidth = readCssPixel("--border-width") || tileSize / 10;
+	const tileSize = containerRect.width / CONTAINER_WIDTH_TILE_UNITS;
+	const borderWidth = readCssPixel("--border-width") || tileSize * BORDER_TILE_RATIO;
 	const layout = measureLayout(tileSize, borderWidth);
 	resizeSurface(surface, layout.container.width, layout.container.height);
 
