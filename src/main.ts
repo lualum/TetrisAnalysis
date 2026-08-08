@@ -1,4 +1,5 @@
 import { BlockfishWrapper } from "./bot";
+import { setupControlsSettings } from "./controls-ui";
 import { Tetris } from "./game";
 import { setupInput } from "./input";
 import { render, setupRenderer } from "./render";
@@ -23,6 +24,7 @@ function gameLoop(): void {
 }
 
 async function start(): Promise<void> {
+	setupControlsSettings();
 	setupInput();
 	await setupRenderer();
 	bot.start();

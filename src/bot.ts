@@ -1,4 +1,5 @@
 import { BOARD_HEIGHT, NEXT_SIZE, PIECES } from "./constants";
+import { botSettings } from "./config";
 import { type CellType, type Piece, Tetris } from "./game";
 
 interface BlockfishAnalysis {
@@ -88,7 +89,7 @@ export class BlockfishWrapper {
 	}
 
 	suggest(): void {
-		if (!this.game.current) return;
+		if (!botSettings.enabled || !this.game.current) return;
 
 		this.consumePreviewHoldIfCurrent();
 		const stateKey = this.getStateKey(this.game);
@@ -104,7 +105,10 @@ export class BlockfishWrapper {
 	}
 
 	ensurePreview(): void {
-		if (!this.game.current) return;
+		if (!botSettings.enabled || !this.game.current) {
+			this.clearPreview();
+			return;
+		}
 
 		this.consumePreviewHoldIfCurrent();
 		if (this.waitingForSuggestion) return;
@@ -116,6 +120,11 @@ export class BlockfishWrapper {
 	}
 
 	ensurePreviousPreview(): void {
+		if (!botSettings.enabled) {
+			this.clearPreviousPreview();
+			return;
+		}
+
 		const previewGame = this.getPreviousMoveGame();
 		if (!previewGame?.current) {
 			this.clearPreviousPreview();
@@ -131,6 +140,8 @@ export class BlockfishWrapper {
 	}
 
 	getPlacementPreview(): PlacementPreview | null {
+		if (!botSettings.enabled) return null;
+
 		this.ensurePreviousPreview();
 		const previewGame = this.getPreviousMoveGame();
 		if (!previewGame?.current) return null;
@@ -417,6 +428,8 @@ export class BlockfishWrapper {
 	}
 
 	getPlacementAnnotation(): PlacementAnnotation | null {
+		if (!botSettings.enabled) return null;
+
 		this.ensurePreviousPreview();
 		return this.previousPlacementAnnotation;
 	}
@@ -472,6 +485,8 @@ export class BlockfishWrapper {
 			rows: game.board.map((row) =>
 				row.map((cell) => cell ?? ".").join(""),
 			),
+			placement_limit: botSettings.analyzeDepth,
+			evaluation_placement_limit: botSettings.analyzeDepth,
 		};
 	}
 

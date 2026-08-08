@@ -13,6 +13,33 @@
 	<div class="container">
 		<canvas id="gameCanvas"></canvas>
 	</div>
+	<div class="affiliation-notice" aria-live="polite">Unaffiliated with TETR.IO</div>
+	<div class="controls-settings-modal" aria-hidden="true">
+		<div class="controls-settings-edge" role="button" aria-label="open config" tabindex="0">
+			<span class="controls-settings-tag">conf</span>
+		</div>
+		<div class="controls-settings-dialog" role="dialog" aria-labelledby="controls-settings-title">
+			<div class="controls-settings-header">
+				<h2 id="controls-settings-title">BOT</h2>
+			</div>
+			<div class="bot-settings">
+				<div class="bot-settings-list"></div>
+			</div>
+			<h2 class="controls-settings-section-title">HANDLING</h2>
+			<div class="handling-settings">
+				<div class="handling-settings-list"></div>
+			</div>
+			<h2 class="controls-settings-section-title">KEYBINDS</h2>
+			<div class="controls-settings-list"></div>
+			<h2 class="controls-settings-section-title">BACKGROUND</h2>
+			<div class="background-settings">
+				<div class="background-settings-list"></div>
+			</div>
+			<div class="controls-settings-actions">
+				<button type="button" class="controls-settings-reset">reset</button>
+			</div>
+		</div>
+	</div>
 	<script type="module" src="/src/main.ts"></script>
 </body>
 

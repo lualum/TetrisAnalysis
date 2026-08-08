@@ -1,4 +1,5 @@
 import { bot, game } from "./main";
+import { botSettings } from "./config";
 import { drawBoard } from "./render-board";
 import { syncCanvasLayout as measureCanvasLayout } from "./render-layout";
 import {
@@ -52,7 +53,16 @@ export function render(): void {
 	graphics.clear();
 	drawStaticPanels(graphics, renderContext);
 	drawHold(graphics, renderContext, game);
-	drawBoard(graphics, renderContext, game, [], { frameEdges: { top: false } });
+	if (botSettings.enabled && botSettings.showMainBoardPreview) {
+		bot.ensurePreview();
+	}
+	drawBoard(
+		graphics,
+		renderContext,
+		game,
+		botSettings.enabled && botSettings.showMainBoardPreview ? bot.getSuggestedPieces() : [],
+		{ frameEdges: { top: false } },
+	);
 	layoutPlacementAnnotations(surface, renderContext, placementAnnotation);
 	if (placementPreview) {
 		drawBoard(

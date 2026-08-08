@@ -1,4 +1,5 @@
 import { DAS, ARR, SD_ARR, Keybinds, keybinds } from "./config";
+import { isControlsSettingsOpen } from "./controls-ui";
 import { game } from "./main";
 
 interface MovementState {
@@ -138,6 +139,7 @@ function stopMovement(dir: keyof MovementState): void {
 }
 
 function handleKeyDown(event: KeyboardEvent): void {
+	if (isControlsSettingsOpen()) return;
 	if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
 	if (event.repeat) return;
 
@@ -200,6 +202,7 @@ function handleKeyDown(event: KeyboardEvent): void {
 }
 
 function handleKeyUp(event: KeyboardEvent): void {
+	if (isControlsSettingsOpen()) return;
 	if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
 
 	const action = getActionFromKey(event.code);
