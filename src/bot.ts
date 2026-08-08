@@ -53,7 +53,6 @@ export interface PlacementPreview {
 }
 
 const PREVIEW_PLACEMENT_LIMIT = 5;
-const REMOTE_BLOCKFISH_ENDPOINT = import.meta.env.VITE_BLOCKFISH_ENDPOINT || "";
 
 export class BlockfishWrapper {
 	game: Tetris;
@@ -66,7 +65,6 @@ export class BlockfishWrapper {
 	private previousPreviewInputs: BlockfishInput[] = [];
 	private previousPreviewStateKey = "";
 	private previousPlacementAnnotation: PlacementAnnotation | null = null;
-	private endpoint: string;
 	private worker: Worker | null = null;
 	private analysisRequestId = 0;
 	private activeAnalysis: {
@@ -77,9 +75,8 @@ export class BlockfishWrapper {
 		topRating?: number;
 	} | null = null;
 
-	constructor(game: Tetris, endpoint = REMOTE_BLOCKFISH_ENDPOINT) {
+	constructor(game: Tetris) {
 		this.game = game;
-		this.endpoint = endpoint;
 	}
 
 	start(): void {
@@ -182,52 +179,10 @@ export class BlockfishWrapper {
 				: this.snapshotForBlockfish(game);
 		this.activeAnalysis = { id, stateKey, applyOnReady, target };
 
-		if (!this.endpoint) {
-			this.getWorker().postMessage({
-				id,
-				snapshot: JSON.stringify(snapshot),
-			});
-			return;
-		}
-
-		void this.fetchRemoteInputs(id, stateKey, snapshot, applyOnReady);
-	}
-
-	private async fetchRemoteInputs(
-		id: number,
-		stateKey: string,
-		snapshot: BlockfishSnapshot,
-		applyOnReady: boolean,
-	): Promise<void> {
-		try {
-			const response = await fetch(this.endpoint, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify(snapshot),
-			});
-
-			if (!response.ok) {
-				throw new Error(`Blockfish request failed (${response.status})`);
-			}
-
-			const analysis = (await response.json()) as BlockfishAnalysis;
-			this.completeAnalysis(
-				id,
-				stateKey,
-				applyOnReady,
-				this.activeAnalysis?.target ?? "current",
-				analysis.suggestions ?? [],
-			);
-		} catch (error) {
-			console.error("[Blockfish]", error);
-			this.completeAnalysis(
-				id,
-				stateKey,
-				applyOnReady,
-				this.activeAnalysis?.target ?? "current",
-				[],
-			);
-		}
+		this.getWorker().postMessage({
+			id,
+			snapshot: JSON.stringify(snapshot),
+		});
 	}
 
 	private getWorker(): Worker {
