@@ -22,8 +22,8 @@ const ACTION_LABELS: Record<keyof Keybinds, string> = {
 	left: "LEFT",
 	right: "RIGHT",
 	down: "SOFT",
-	hardDrop: "HARD",
 	rotateClockwise: "CW",
+	hardDrop: "HARD",
 	rotateCounterClockwise: "CCW",
 	rotate180: "180",
 	hold: "HOLD",
@@ -36,8 +36,8 @@ const ACTIONS: Array<keyof Keybinds> = [
 	"left",
 	"right",
 	"down",
-	"hardDrop",
 	"rotateClockwise",
+	"hardDrop",
 	"rotateCounterClockwise",
 	"rotate180",
 	"hold",
@@ -335,6 +335,9 @@ function renderControlsList(): void {
 			const slot = document.createElement("button");
 			slot.type = "button";
 			slot.className = "control-key";
+			if (key === "Space") {
+				slot.classList.add("is-wide");
+			}
 			slot.textContent =
 				bindingAction === action && bindingIndex === index
 					? "press key"

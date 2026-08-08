@@ -44,7 +44,7 @@ export interface Piece {
 
 export interface Snapshot {
 	board: Board;
-	current: PieceType | null;
+	current: Piece | null;
 	next: PieceType[];
 	holdPiece: PieceType | null;
 	lastPlacement: Piece | null;
@@ -72,14 +72,14 @@ export class Tetris {
 		clone.lastPlacement = this.lastPlacement ? { ...this.lastPlacement } : null;
 		clone.history = this.history.map((snap) => ({
 			board: snap.board.map((row) => [...row]),
-			current: snap.current,
+			current: snap.current ? { ...snap.current } : null,
 			next: [...snap.next],
 			holdPiece: snap.holdPiece,
 			lastPlacement: snap.lastPlacement ? { ...snap.lastPlacement } : null,
 		}));
 		clone.future = this.future.map((snap) => ({
 			board: snap.board.map((row) => [...row]),
-			current: snap.current,
+			current: snap.current ? { ...snap.current } : null,
 			next: [...snap.next],
 			holdPiece: snap.holdPiece,
 			lastPlacement: snap.lastPlacement ? { ...snap.lastPlacement } : null,
@@ -88,6 +88,9 @@ export class Tetris {
 	}
 
 	reset(): void {
+		const previous = this.history.length > 0 ? this.snapshot() : null;
+		const previousHistory = this.history;
+
 		this.board = Array(BOARD_HEIGHT)
 			.fill(null)
 			.map(() => Array(BOARD_WIDTH).fill(null));
@@ -96,10 +99,20 @@ export class Tetris {
 		this.holdPiece = null;
 		this.lastPlacement = null;
 		this.next = [];
-		this.history = [];
 		this.future = [];
 		this.spawnPiece();
-		this.save();
+		const reset = this.snapshot();
+
+		if (!previous) {
+			this.history = [reset];
+			return;
+		}
+
+		this.history = [...previousHistory];
+		if (!Tetris.snapshotsEqual(this.history[this.history.length - 1], previous)) {
+			this.history.push(previous);
+		}
+		this.history.push(reset);
 	}
 
 	private addCheeseGarbage(): void {
@@ -163,7 +176,7 @@ export class Tetris {
 	snapshot(): Snapshot {
 		return {
 			board: this.board.map((row) => [...row]),
-			current: this.current ? this.current.type : null,
+			current: this.current ? { ...this.current } : null,
 			next: [...this.next],
 			holdPiece: this.holdPiece,
 			lastPlacement: this.lastPlacement ? { ...this.lastPlacement } : null,
@@ -175,10 +188,32 @@ export class Tetris {
 		this.next = [...snap.next];
 		this.holdPiece = snap.holdPiece;
 		this.lastPlacement = snap.lastPlacement ? { ...snap.lastPlacement } : null;
-		this.current = null;
-		if (snap.current) {
-			this.spawnPiece(snap.current);
-		}
+		this.current = snap.current ? { ...snap.current } : null;
+	}
+
+	private static piecesEqual(a: Piece | null, b: Piece | null): boolean {
+		if (a === null || b === null) return a === b;
+		return (
+			a.type === b.type &&
+			a.orientation === b.orientation &&
+			a.x === b.x &&
+			a.y === b.y
+		);
+	}
+
+	private static boardsEqual(a: Board, b: Board): boolean {
+		return a.every((row, y) => row.every((cell, x) => cell === b[y]?.[x]));
+	}
+
+	private static snapshotsEqual(a: Snapshot, b: Snapshot): boolean {
+		return (
+			Tetris.boardsEqual(a.board, b.board) &&
+			Tetris.piecesEqual(a.current, b.current) &&
+			a.next.length === b.next.length &&
+			a.next.every((piece, i) => piece === b.next[i]) &&
+			a.holdPiece === b.holdPiece &&
+			Tetris.piecesEqual(a.lastPlacement, b.lastPlacement)
+		);
 	}
 
 	save(): void {

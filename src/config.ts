@@ -23,7 +23,7 @@ export const defaultHandling: HandlingSettings = {
 
 export const defaultBotSettings: BotSettings = {
 	enabled: true,
-	analyzeDepth: 5,
+	analyzeDepth: 4,
 	showMainBoardPreview: false,
 };
 
@@ -41,16 +41,16 @@ export function setBotSettings(settings: BotSettings): void {
 
 function createDefaultKeybinds(): Keybinds {
 	return {
-		left: ["KeyR", "ArrowLeft", null],
-		right: ["KeyU", "ArrowRight", null],
-		down: ["KeyV", "ArrowDown", null],
-		rotateClockwise: ["KeyI", "ArrowUp", "KeyX"],
-		rotateCounterClockwise: ["KeyE", "KeyS", null],
-		rotate180: ["KeyW", null, null],
+		left: ["ArrowLeft", "KeyR", null],
+		right: ["ArrowRight", "KeyU", null],
+		down: ["ArrowDown", "KeyV", null],
+		rotateClockwise: ["ArrowUp", "KeyX", "KeyI"],
+		rotateCounterClockwise: ["KeyZ", "KeyS", "KeyE"],
+		rotate180: ["KeyA", "KeyW", null],
 		hardDrop: ["Space", null, null],
-		hold: ["KeyO", "KeyC", null],
+		hold: ["KeyC", "KeyO", null],
 		reset: ["KeyQ", null, null],
-		undo: ["KeyZ", null, null],
+		undo: ["KeyT", null, null],
 		redo: ["KeyY", null, null],
 	};
 }

@@ -64,35 +64,6 @@ body {
 	height: var(--canvas-height);
 }
 
-.affiliation-notice {
-	position: fixed;
-	left: 50%;
-	bottom: max(18px, env(safe-area-inset-bottom));
-	z-index: 9;
-	transform: translateX(-50%);
-	color: #ffffffd9;
-	font-size: clamp(20px, calc(var(--tile-width) * 0.72), 32px);
-	line-height: 1;
-	text-align: center;
-	text-transform: uppercase;
-	text-shadow:
-		1px 1px 0 var(--color-text-outline),
-		0 0 calc(var(--tile-width) * 0.2) #ffffff40;
-	pointer-events: none;
-	animation: notice-fade 4.8s ease-out 0.4s forwards;
-}
-
-@keyframes notice-fade {
-	0%,
-	58% {
-		opacity: 1;
-	}
-
-	100% {
-		opacity: 0;
-	}
-}
-
 button {
 	color: var(--color-text-primary);
 	background: #000000cc;
@@ -169,13 +140,6 @@ button:focus-visible {
 		color 140ms ease-out,
 		background 140ms ease-out,
 		transform 140ms ease-out;
-}
-
-.controls-settings-edge:hover .controls-settings-tag,
-.controls-settings-edge:focus-visible .controls-settings-tag {
-	color: #ffffff;
-	background: #ffffff99;
-	transform: translateX(calc(var(--tile-width) * -0.08));
 }
 
 .controls-settings-modal.is-open {
@@ -351,7 +315,7 @@ button:focus-visible {
 
 .controls-settings-row {
 	display: grid;
-	grid-template-columns: minmax(120px, 1fr) calc(var(--tile-width) * 5.7);
+	grid-template-columns: minmax(120px, 1fr) calc(var(--tile-width) * 6.55);
 	align-items: center;
 	gap: calc(var(--tile-width) * 0.14);
 	min-height: calc(var(--tile-width) * 0.92);
@@ -387,13 +351,23 @@ button:focus-visible {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: calc(var(--tile-width) * 1.78);
-	min-width: calc(var(--tile-width) * 1.78);
+	width: calc(var(--tile-width) * 2.04);
+	min-width: calc(var(--tile-width) * 2.04);
+	height: calc(var(--tile-width) * 0.9);
+	padding: 0;
+	padding-block: 0;
+	padding-inline: 0;
 	background: #000000dd;
 	border-width: 1px;
 	border-color: #ffffffc8;
 	text-align: center;
+	line-height: 1;
 	white-space: normal;
+}
+
+.control-key.is-wide {
+	width: calc(var(--tile-width) * 2.62);
+	min-width: calc(var(--tile-width) * 2.62);
 }
 
 .control-key:hover,
@@ -417,11 +391,13 @@ button:focus-visible {
 }
 
 .controls-settings-actions {
+	display: flex;
+	justify-content: center;
 	padding-top: calc(var(--tile-width) * 0.42);
 }
 
 .controls-settings-reset {
-	margin-left: auto;
+	margin: 0 auto;
 	background: #000000b8;
 	border-color: #ffffffb0;
 }
